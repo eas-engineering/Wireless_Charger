@@ -22,7 +22,7 @@ void OnProjectLoad (void) {
   //
   // Dialog-generated settings. NEEDED CHANGE PROJECT NAME!
   //  
-  Project.AddPathSubstitute ("/workspaces/Template_MCX", "..\..\Template_MCX");
+  Project.AddPathSubstitute ("/workspaces/Wireless_Charger", "..\..\Wireless_Charger");
   Project.SetDevice ("MCXA142");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
@@ -31,7 +31,7 @@ void OnProjectLoad (void) {
   //
   // User settings NEEDED CHANGE PROJECT NAME!
   //
-  File.Open ("../build/Debug/my_project.elf");
+  File.Open ("../build/Debug/Wireless_Charger.elf");
 }
 
 /*********************************************************************
