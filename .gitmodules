@@ -1,0 +1,12 @@
+[submodule "libraries/drivers/cmsis_core"]
+	path = libraries/drivers/cmsis_core
+	url = https://github.com/eas-engineering/mcu-sdk-cmsis.git
+	branch = release/24.12.00
+[submodule "libraries/drivers/cmsis_device"]
+	path = libraries/drivers/cmsis_device
+	url = https://github.com/eas-engineering/mcux-devices-mcx.git
+	branch = release/25.12.00
+[submodule "libraries/drivers/mcuxsdk_core"]
+	path = libraries/drivers/mcuxsdk_core
+	url = https://github.com/eas-engineering/mcuxsdk-core.git
+	branch = release/25.12.00

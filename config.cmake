@@ -1,7 +1,7 @@
 message("config.cmake files is processing...")
 
 # Imposto il nome del progetto che diventerà il target
-set(PROJECT_NAME              my_project)
+set(PROJECT_NAME              Wireless_Charger)
 
 set(VERSION_MAJOR             1)
 set(VERSION_MINOR             0)

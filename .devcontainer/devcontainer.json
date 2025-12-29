@@ -1,8 +1,8 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/debian
 {
-    "name": "ubuntu-arm-mcx",
-    "image": "ubuntu-arm-gcc-mcx",
+    "name": "ubuntu-embedded-arm-gcc-devcontainer",
+    "image": "ubuntu-embedded-arm-gcc:1.0",
     "privileged": true,
     "runArgs": ["--name", "${localWorkspaceFolderBasename}", "--net", "host"],
 
