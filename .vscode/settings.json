@@ -1,0 +1,10 @@
+{
+    "cmake.sourceDirectory": "/workspaces/${workspaceFolderBasename}",
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "files.associations": {
+        "stddef.h": "c",
+        "stdint.h": "c",
+        "board.h": "c"
+    }
+}

@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+    "runner": "terminal",
+
+	"tasks": [
+        {
+            "type": "cppbuild",
+            "label": "DEBUG - Build project",
+            "command": "./build.sh",                   
+            "args": ["Debug"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "cppbuild",
+            "label": "RELEASE - Build project",
+            "command": "./build.sh",                   
+            "args": ["Release"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },        
+        {
+            "type": "shell",
+            "label": "CLEAN - Clean project",
+            "command": "./clean.sh",
+            "args": ["Debug"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },  
+        {
+            "type": "process",
+            "label": "ECLAIR - DEBUG",
+            "command": "./analyze.sh",                   
+            "args": ["MC3", "Debug"],
+            "options": {
+                "cwd": "${workspaceFolder}/ECLAIR"
+            },
+            "problemMatcher": []
+        },      
+    ]
+}

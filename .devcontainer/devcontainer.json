@@ -1,0 +1,20 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/debian
+{
+    "name": "ubuntu-arm-mcx",
+    "image": "ubuntu-arm-gcc-mcx",
+    "privileged": true,
+    "runArgs": ["--name", "${localWorkspaceFolderBasename}", "--net", "host"],
+
+    // Serve per installare l'estensione nel container
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cmake-tools",
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                "cschlosser.doxdocgen"            
+            ]            
+        }
+    }
+}

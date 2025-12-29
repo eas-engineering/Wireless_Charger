@@ -1,0 +1,152 @@
+name: release-project Release
+
+env:
+  # Create a variable with the name of the repo that shloud be the same of the project
+  BUILD_OUPUT_PATH: ./build/Release/${{ github.event.repository.name }}.bin
+  BUILD_OUPUT_PATH_WITH_BOOTOLOADER: ./build/ReleaseWithBootloader/${{ github.event.repository.name }}_Signed.bin
+
+# Controls when the action will run.
+# Triggers the workflow on tag events
+on:
+  push:
+    tags: # Run this action only when a release tag is pushed
+      - 'v*'  # Triggera su qualsiasi tag che inizia con "v"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # job called "build"
+  build:
+
+    name: Building
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    container:
+      image: gdvecchia/ubuntu-arm-gcc-stm32
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository      
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
+
+      # Runs a single command to build the project
+      - name: Build project with Cmake and Ninja in Release mode
+        run: chmod +x ./build.sh && bash ./build.sh Release  
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.7'  # o qualunque versione ti serva
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ./tools/scripts/requirements.txt
+
+      # Runs a single command to build the project
+      - name: Build project with Cmake and Ninja in Release mode for bootloader
+        run: chmod +x ./build.sh && bash ./build.sh ReleaseWithBootloader  
+
+      # Upload the binary output
+      - name: Upload build project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build
+          path: |
+            ${{env.BUILD_OUPUT_PATH}}
+            ${{env.BUILD_OUPUT_PATH_WITH_BOOTOLOADER}}
+
+  # job called "release"
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    # This job runs when build has finished  
+    needs: build
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps: 
+
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Check if it's the first tag
+      - name: Check if it's the first tag
+        id: check_first_tag
+        run: |
+          git fetch --tags --force  # Assicura di scaricare tutti i tag remoti
+          tag_count=$(git tag --list | wc -l)  # Conta quanti tag ci sono nel repository
+
+          if [ "$tag_count" -eq 1 ]; then
+            echo "FIRST_TAG=true" >> $GITHUB_ENV
+            echo "Questo è il primo rilascio!"
+          else
+            echo "FIRST_TAG=false" >> $GITHUB_ENV
+            echo "Non è il primo rilascio!"
+          fi
+
+      # Create changelog
+      - name: Create changelog text
+        id: changelog
+        if: env.FIRST_TAG == 'false'
+        uses: loopwerk/tag-changelog@v1
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          exclude_types: other,doc
+
+      # Create empty changelog if first tag
+      - name: Create empty changelog if first tag
+        if: env.FIRST_TAG == 'true'
+        run: |
+          mkdir -p build  # Crea la directory build se non esiste
+          echo "No previous tags, first release!" > build/CHANGELOG.md
+
+      # Download binary generated on the previus build job
+      - uses: actions/download-artifact@v4
+        with:
+          name: Build
+          path: build
+
+      # Create a changelog file in the same folder of the binary output
+      - name: Create changelog file                
+        run: touch build/CHANGELOG.md && echo "${{ steps.changelog.outputs.changes }}" > build/CHANGELOG.md
+
+      # Create a output compress folder
+      - name: Create the compression output folder
+        run: zip -r -j build.zip build/
+
+      - name: Checkout repository for source
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          submodules: recursive
+          fetch-depth: 0
+          path: snapshot
+
+      - name: Remove Git metadata and create source archive
+        run: |
+          rm -rf snapshot/.git
+          rm -rf snapshot/.github          
+          rm -rf snapshot/ECLAIR
+          rm -rf snapshot/.gitmodules         
+          zip -r source.zip snapshot      
+
+      # Publish the release
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "build.zip,source.zip"
+          body: ${{ steps.changelog.outputs.changes }}
+

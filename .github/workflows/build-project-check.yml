@@ -1,0 +1,43 @@
+name: build-project Build
+
+# Controls when the action will run.
+# Triggers the workflow on push or pull request events but only for the $default-branch branch
+on:
+  # Triggers the workflow on push or pull request events but only for the $default-branch branch
+  push:
+    branches: [ my-branch ]  #TODO: Add branches name
+  pull_request:
+    branches: [ my-branch ]  #TODO: Add branches name
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "formatting-check"
+  building:
+
+    name: Building
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    container:
+      image: gdvecchia/ubuntu-arm-gcc-stm32
+
+    strategy:
+      matrix:
+        type:
+          - 'Debug'
+          - 'Release'
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository      
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      # Runs a single command using the runners shell
+      - name: Build project with Cmake and Ninja in Debug mode
+        run: chmod +x ./build.sh && bash ./build.sh ${{ matrix.type }}  
+
