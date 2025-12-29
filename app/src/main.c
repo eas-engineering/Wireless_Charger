@@ -1,10 +1,22 @@
 /******************************************************************************
- * Filename              :   main.c
- * Author                :   Giulio Dalla Vecchia
- * Origin Date           :   01 December 2023
+ * Filename              : main.c
+ * Author                : Giulio Dalla Vecchia
+ * Origin Date           : 29 December 2025
  *
- * Copyright (c) 2025 EAS-ENGINEERING SRL. All rights reserved.
+ * Copyright (c) 2025 EAS Engineering srl.
  *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
 /** @file main.c
@@ -12,8 +24,8 @@
  */
 
 /*****************************************************************************
- * Includes
- ******************************************************************************/
+* Includes
+******************************************************************************/
 #include <stdint.h>
 #include <stdio.h>
 #include "project_settings.h"
@@ -23,24 +35,24 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 #endif
 
 /*****************************************************************************
- * Module Preprocessor Constants
- ******************************************************************************/
+* Module Preprocessor Constants
+******************************************************************************/
 
 /*****************************************************************************
- * Module Preprocessor Macros
- ******************************************************************************/
+* Module Preprocessor Macros
+******************************************************************************/
 
 /*****************************************************************************
- * Module Typedefs
- ******************************************************************************/
+* Module Typedefs
+******************************************************************************/
 
 /*****************************************************************************
- * Function Prototypes
- ******************************************************************************/
+* Function Prototypes
+******************************************************************************/
 
 /*****************************************************************************
- * Module Variable Definitions
- ******************************************************************************/
+* Module Variable Definitions
+******************************************************************************/
 
 #if defined(USE_QPC)
 static QF_MPOOL_EL(QEvt) smlPoolSto[10];
@@ -48,14 +60,9 @@ static QSubscrList subscrSto[MAX_PUB_SIG];
 #endif
 
 /*****************************************************************************
- * Function Definitions
- ******************************************************************************/
+* Function Definitions
+******************************************************************************/
 
-/**
- * @brief
- *
- * @return int32_t
- */
 int
 main(void) {
 
@@ -114,21 +121,3 @@ main(void) {
   return QF_run(); // run the QF application
 #endif
 }
-
-#ifdef USE_EDF_FRAMEWORK
-/**
- * Funzione richiamata dal framework EDF nel caso in cui fallisce un assert
- * @param module
- * @param location
- */
-void
-edf_on_assert(char_t const* const module, int_t const location) {
-#ifdef DEBUG
-  printf("Assert FAIL: %s, riga: %d\n", module, location);
-  __disable_irq();
-  while (1) {};
-#else
-  NVIC_SystemReset();
-#endif
-}
-#endif
