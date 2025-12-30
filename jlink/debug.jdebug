@@ -26,7 +26,7 @@ void OnProjectLoad (void) {
   Project.SetDevice ("MCXA142");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
-  Project.SetTIFSpeed ("15 MHz");
+  Project.SetTIFSpeed ("4 MHz");
   Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M33.svd");  
   //
   // User settings NEEDED CHANGE PROJECT NAME!

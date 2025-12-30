@@ -2,7 +2,9 @@ include_guard(GLOBAL)
 message("BSP component is included.")
 
 file(GLOB SEGGER_RTT_SOURCE_FILES_LIST 
-    #"${CMAKE_CURRENT_LIST_DIR}/src/bsp_xxx.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_clock.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_pwm.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_adc.c"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

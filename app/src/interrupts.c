@@ -26,6 +26,7 @@
 /*****************************************************************************
 * Includes
 ******************************************************************************/
+#include "bsp_adc.h"
 #include "project_settings.h"
 
 /*****************************************************************************
@@ -150,3 +151,14 @@ PendSV_Handler(void) {}
 void
 SysTick_Handler(void) {}
 #endif
+
+/**
+ * @brief This function handles ADC0 interrupt request.
+ *
+ * It is responsible for reading the ADC conversion result and
+ * clearing the interrupt flag.
+ */
+void
+ADC0_IRQHandler(void) {
+  bsp_adc_isr_handler();
+}

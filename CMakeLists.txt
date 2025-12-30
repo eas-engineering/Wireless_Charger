@@ -113,6 +113,7 @@ if(USE_MCXA142)
     )
   endif()  
   include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/common)
+  include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/port)
   target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/common/fsl_common.c)
   target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/common/fsl_common_arm.c)
   
@@ -141,6 +142,9 @@ if(USE_MCXA142)
 
   include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/ctimer)
   target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/ctimer/fsl_ctimer.c)     
+
+  include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/inputmux)
+  target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/inputmux/fsl_inputmux.c)       
 endif()
 
 # Include il layer BSP
