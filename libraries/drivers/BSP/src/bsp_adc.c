@@ -188,6 +188,9 @@ bsp_adc_peripheral_init(void) {
   CLOCK_SetClockDiv(kCLOCK_DivADC0, 1u);
   CLOCK_AttachClk(kFRO12M_to_ADC0);
 
+  /* ADC0 peripheral is released from reset */
+  RESET_ReleasePeripheralReset(kADC0_RST_SHIFT_RSTn);  
+
   LPADC_GetDefaultConfig(&adc_config);
   adc_config.enableAnalogPreliminary = true;
   adc_config.referenceVoltageSource = kLPADC_ReferenceVoltageAlt3; // VDD_ANA supply pin

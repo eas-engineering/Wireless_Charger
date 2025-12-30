@@ -36,14 +36,14 @@
 ******************************************************************************/
 
 /*!< Board xtal0 frequency in Hz */
-#define BOARD_BOOTCLOCKFRO96M_CORE_CLOCK           96000000U
-#define BOARD_BOOTCLOCKFRO64M_CORE_CLOCK           64000000U
-#define BOARD_BOOTCLOCKFRO48M_CORE_CLOCK           48000000U
-#define BOARD_BOOTCLOCKFRO24M_CORE_CLOCK           24000000U
-#define BOARD_BOOTCLOCKFRO12M_CORE_CLOCK           12000000U
+#define BOARD_BOOTCLOCKFRO96M_CORE_CLOCK 96000000U
+#define BOARD_BOOTCLOCKFRO64M_CORE_CLOCK 64000000U
+#define BOARD_BOOTCLOCKFRO48M_CORE_CLOCK 48000000U
+#define BOARD_BOOTCLOCKFRO24M_CORE_CLOCK 24000000U
+#define BOARD_BOOTCLOCKFRO12M_CORE_CLOCK 12000000U
 
 /*!< Board xtal0 frequency in Hz */
-#define BOARD_XTAL0_CLK_HZ                         48000000U  
+#define BOARD_XTAL0_CLK_HZ               48000000U
 
 /*****************************************************************************
 * Module Preprocessor Macros

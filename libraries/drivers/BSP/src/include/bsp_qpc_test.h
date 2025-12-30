@@ -1,32 +1,20 @@
-/******************************************************************************
- * Filename              : bsp_pwm.h
- * Author                : Giulio Dalla Vecchia
- * Origin Date           : 29 December 2025
- *
- * Copyright (c) 2025 EAS Engineering srl.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- ******************************************************************************/
+/*****************************************************************************
+* Filename              :   bsp_qpc_test.h
+* Author                :   Giulio Dalla Vecchia
+* Origin Date           :   29 August 2024
+*
+* Copyright (c) 2024 EAS SPA. All rights reserved.
+*
+******************************************************************************/
 
-/** @file bsp_pwm.h
+/** @file bsp_qpc_test.h
  *  @brief This module handles the doxygen comments.
  *
  *  This is the header file for the definition of doxygen comments function.
  */
 
-#ifndef BSP_PWM_H_
-#define BSP_PWM_H_
+#ifndef BSP_QPC_TEST_H_
+#define BSP_QPC_TEST_H_
 
 /*****************************************************************************
 * Includes
@@ -34,7 +22,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"{
 #endif
 
 /**
@@ -63,10 +51,6 @@ extern "C" {
 * Function Prototypes
 ******************************************************************************/
 
-void bsp_pwm_init(void);
-
-void bsp_pwm_set_duty(uint32_t duty_percent);
-
 /**
  * }
  */
@@ -75,6 +59,7 @@ void bsp_pwm_set_duty(uint32_t duty_percent);
 } // extern "C"
 #endif
 
-#endif /*BSP_PWM_H_*/
+#endif /*BSP_QPC_TEST_H_*/
 
 /*** End of File *************************************************************/
+

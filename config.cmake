@@ -37,7 +37,7 @@ set(USE_MODBUS                OFF)
 set(USE_FLASH_DB              OFF)
 
 # Include QPC Framework
-set(USE_QPC                   OFF)
+set(USE_QPC                   ON)
 set(QPC_PROJECT               ${PROJECT_NAME})
 set(QPC_CFG_KERNEL            QK)
 set(QPC_CFG_GUI               OFF)

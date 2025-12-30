@@ -1,7 +1,7 @@
 /******************************************************************************
- * Filename              : main.c
+ * Filename              : bsp_i2c.h
  * Author                : Giulio Dalla Vecchia
- * Origin Date           : 29 December 2025
+ * Origin Date           : 30 December 2025
  *
  * Copyright (c) 2025 EAS Engineering srl.
  *
@@ -19,25 +19,31 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-/** @file main.c
- *  @brief This is the source file for doxygen comments function
+/** @file bsp_i2c.h
+ *  @brief This module handles the doxygen comments.
+ *
+ *  This is the header file for the definition of doxygen comments function.
  */
+
+#ifndef BSP_I2C_H_
+#define BSP_I2C_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include <stdio.h>
-#include "bsp_adc.h"
-#include "bsp_clock.h"
-#include "bsp_pwm.h"
-#include "bsp_i2c.h"
-#include "bsp_stwlc_driver.h"
-#include "project_settings.h"
+#include "global_signals.h"
+#include "qpc.h"
 
-#if defined(USE_QPC)
-Q_DEFINE_THIS_FILE // define the name of this file for assertions
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+/**
+ * \defgroup        Template
+ * \brief           Template functions group
+ * \{
+ */
 
 /*****************************************************************************
 * Module Preprocessor Constants
@@ -51,65 +57,45 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 * Module Typedefs
 ******************************************************************************/
 
-/*****************************************************************************
-* Function Prototypes
-******************************************************************************/
+/* Enumerations for serial interface signals */
+enum {
+  BSP_I2C_SEND_SIG = BSP_I2C_GROUP, /* Signal used when you want to send data */
+  BSP_I2C_RECEIVE_SIG,              /* Signal used when data has been received */
+  BSP_I2C_TX_RX_CMPL_SIG,           /* Signal used when the transmission is complete */
+  BSP_I2C_TX_RX_ERROR_SIG,          /* Signal used when an error occurs */
+  BSP_I2C_TIMEOUT_SIG,              /* Signal used when a timeout occurs */
+  BSP_I2C_REQ_CMPL_SIG,             /* Signal used when the request is complete */
+  BSP_I2C_REQ_ERROR_SIG,            /* Signal used when an error occurs */
+  BSP_I2C_MAX_SIG,
+};
+
+typedef struct {
+  QEvt super;
+  uint16_t DevAddress;
+  uint16_t MemAddress;
+  uint8_t pui8_data[128];
+  uint32_t len;
+  QActive* AO_sender;
+} BspI2CEvt_t;
 
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
 
-#if defined(USE_QPC)
-  static QF_MPOOL_EL(BspI2CEvt_t) smlPoolSto[10];
-static QSubscrList subscrSto[MAX_PUB_SIG];
-#endif
-
 /*****************************************************************************
-* Function Definitions
+* Function Prototypes
 ******************************************************************************/
 
-int
-main(void) {
+QHsm* bsp_i2c_init(QActive* const container);
 
-  bsp_clock_init();
+/**
+ * }
+ */
 
-  QF_init();
-
-  // initialize the QS software tracing...
-  if (!QS_INIT((void*)0)) {
-    Q_ERROR();
-  }
-
-  // dictionaries...
-#ifdef Q_SPY
-  QS_OBJ_DICTIONARY(&l_SysTick_Handler);
-#endif
-  QS_ONLY(produce_sig_dict());
-
-  // setup the QS filters...
-  QS_GLB_FILTER(QS_ALL_RECORDS);   // all records
-  QS_GLB_FILTER(-QS_QF_TICK);      // exclude
-  QS_GLB_FILTER(-QS_SCHED_LOCK);   // exclude
-  QS_GLB_FILTER(-QS_SCHED_UNLOCK); // exclude
-
-#ifdef Q_UTEST
-  // pause execution of the test and wait for the test script to continue
-  QS_TEST_PAUSE();
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
-  // initialize event pools
-  QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
+#endif /*BSP_I2C_H_*/
 
-  // initialize publish-subscribe
-  QActive_psInit(subscrSto, Q_DIM(subscrSto));
-
-  /* Initialize other modules */
-  bsp_pwm_init();
-  bsp_pwm_set_duty(50); // Set 50% duty cycle
-
-  bsp_adc_init();  
-
-  bsp_stwlc_driver_init();
-
-  return QF_run(); // run the QF application
-}
+/*** End of File *************************************************************/

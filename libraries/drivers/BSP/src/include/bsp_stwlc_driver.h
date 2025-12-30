@@ -1,7 +1,7 @@
 /******************************************************************************
- * Filename              : main.c
+ * Filename              : bsp_stwlc_driver.h
  * Author                : Giulio Dalla Vecchia
- * Origin Date           : 29 December 2025
+ * Origin Date           : 30 December 2025
  *
  * Copyright (c) 2025 EAS Engineering srl.
  *
@@ -19,25 +19,30 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-/** @file main.c
- *  @brief This is the source file for doxygen comments function
+/** @file bsp_stwlc_driver.h
+ *  @brief This module handles the doxygen comments.
+ *
+ *  This is the header file for the definition of doxygen comments function.
  */
+
+#ifndef BSP_STWLC_DRIVER_H_
+#define BSP_STWLC_DRIVER_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include <stdio.h>
-#include "bsp_adc.h"
-#include "bsp_clock.h"
-#include "bsp_pwm.h"
-#include "bsp_i2c.h"
-#include "bsp_stwlc_driver.h"
-#include "project_settings.h"
+#include "qpc.h"
 
-#if defined(USE_QPC)
-Q_DEFINE_THIS_FILE // define the name of this file for assertions
+#ifdef __cplusplus
+extern "C"{
 #endif
+
+/**
+ * \defgroup        Template
+ * \brief           Template functions group
+ * \{
+ */
 
 /*****************************************************************************
 * Module Preprocessor Constants
@@ -52,64 +57,24 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 ******************************************************************************/
 
 /*****************************************************************************
-* Function Prototypes
-******************************************************************************/
-
-/*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
 
-#if defined(USE_QPC)
-  static QF_MPOOL_EL(BspI2CEvt_t) smlPoolSto[10];
-static QSubscrList subscrSto[MAX_PUB_SIG];
-#endif
-
 /*****************************************************************************
-* Function Definitions
+* Function Prototypes
 ******************************************************************************/
 
-int
-main(void) {
+void bsp_stwlc_driver_init(void);
 
-  bsp_clock_init();
+/**
+ * }
+ */
 
-  QF_init();
-
-  // initialize the QS software tracing...
-  if (!QS_INIT((void*)0)) {
-    Q_ERROR();
-  }
-
-  // dictionaries...
-#ifdef Q_SPY
-  QS_OBJ_DICTIONARY(&l_SysTick_Handler);
-#endif
-  QS_ONLY(produce_sig_dict());
-
-  // setup the QS filters...
-  QS_GLB_FILTER(QS_ALL_RECORDS);   // all records
-  QS_GLB_FILTER(-QS_QF_TICK);      // exclude
-  QS_GLB_FILTER(-QS_SCHED_LOCK);   // exclude
-  QS_GLB_FILTER(-QS_SCHED_UNLOCK); // exclude
-
-#ifdef Q_UTEST
-  // pause execution of the test and wait for the test script to continue
-  QS_TEST_PAUSE();
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
-  // initialize event pools
-  QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
+#endif /*BSP_STWLC_DRIVER_H_*/
 
-  // initialize publish-subscribe
-  QActive_psInit(subscrSto, Q_DIM(subscrSto));
+/*** End of File *************************************************************/
 
-  /* Initialize other modules */
-  bsp_pwm_init();
-  bsp_pwm_set_duty(50); // Set 50% duty cycle
-
-  bsp_adc_init();  
-
-  bsp_stwlc_driver_init();
-
-  return QF_run(); // run the QF application
-}

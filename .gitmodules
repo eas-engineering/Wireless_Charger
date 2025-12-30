@@ -10,3 +10,6 @@
 	path = libraries/drivers/mcuxsdk_core
 	url = https://github.com/eas-engineering/mcuxsdk-core.git
 	branch = release/25.12.00
+[submodule "libraries/middlewares/qpc"]
+	path = libraries/middlewares/qpc
+	url = https://github.com/eas-engineering/qpc.git

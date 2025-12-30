@@ -82,7 +82,7 @@ bsp_pwm_init(void) {
  */
 void
 bsp_pwm_set_duty(uint32_t duty_percent) {
-  
+
   if (duty_percent > 100U) {
     duty_percent = 100U;
   }
@@ -151,11 +151,14 @@ bsp_pwm_timer_init(void) {
   CLOCK_SetClockDiv(kCLOCK_DivCTIMER1, 1u);
   CLOCK_AttachClk(kFRO_HF_to_CTIMER1);
 
+  /* CTIMER1 peripheral is released from reset */
+  RESET_ReleasePeripheralReset(kCTIMER1_RST_SHIFT_RSTn);
+
   CTIMER_GetDefaultConfig(&config);
   CTIMER_Init(CTIMER, &config);
 
   timerClock = CLOCK_GetCTimerClkFreq(1U) / (config.prescale + 1);
 
-  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 0U, 1000U, timerClock, false);
+  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 0U, 700000U, timerClock, false);
   CTIMER_StartTimer(CTIMER);
 }

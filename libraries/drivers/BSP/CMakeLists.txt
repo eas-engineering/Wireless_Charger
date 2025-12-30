@@ -5,6 +5,9 @@ file(GLOB SEGGER_RTT_SOURCE_FILES_LIST
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_clock.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_pwm.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_adc.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_i2c.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_qpc.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_stwlc_driver.c"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

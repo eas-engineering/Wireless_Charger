@@ -28,9 +28,9 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
     # -Wsuggest-override
     >
     $<$<COMPILE_LANGUAGE:ASM>: -c -x assembler-with-cpp -D__NEWLIB__>
-    $<$<CONFIG:Debug>: -O0 -g3 -ggdb ${HAL_DEFINE} -DDEBUG=1 -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -ffreestanding -fno-common -fno-builtin>
-    $<$<CONFIG:Release>: -Os -g0 -fno-strict-aliasing ${HAL_DEFINE} -DNDEBUG -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -ffreestanding -fno-common -fno-builtin>
-    $<$<CONFIG:Spy>: -O0 -g3 -ggdb ${HAL_DEFINE} -DDEBUG=1 -DQ_SPY -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -ffreestanding -fno-common -fno-builtin>
+    $<$<CONFIG:Debug>: -O0 -g3 -ggdb ${HAL_DEFINE} -DDEBUG=1 -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -D__STARTUP_CLEAR_BSS -ffreestanding -fno-common -fno-builtin>
+    $<$<CONFIG:Release>: -Os -g0 -fno-strict-aliasing ${HAL_DEFINE} -DNDEBUG -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -D__STARTUP_CLEAR_BSS -ffreestanding -fno-common -fno-builtin>
+    $<$<CONFIG:Spy>: -O0 -g3 -ggdb ${HAL_DEFINE} -DDEBUG=1 -DQ_SPY -D__USE_CMSIS -D__ATOLLIC__ -D__NEWLIB__ -D__STARTUP_CLEAR_BSS -ffreestanding -fno-common -fno-builtin>
 )
 
 # Linker options

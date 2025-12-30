@@ -21,7 +21,7 @@
 /* #undef USE_FREERTOS */
 
 // if the CMake variable USE_QPC is set to ON or TRUE.
-/* #undef USE_QPC */
+#define USE_QPC
 #ifdef USE_QPC
 #include "global_signals.h"
 #include "qpc.h"

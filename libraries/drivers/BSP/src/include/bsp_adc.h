@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 /**
@@ -78,4 +78,3 @@ void bsp_adc_isr_handler(void);
 #endif /*BSP_ADC_H_*/
 
 /*** End of File *************************************************************/
-

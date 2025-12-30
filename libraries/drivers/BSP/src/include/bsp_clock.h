@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 /**
@@ -76,4 +76,3 @@ void bsp_clock_init(void);
 #endif /*BSP_CLOCK_H_*/
 
 /*** End of File *************************************************************/
-
