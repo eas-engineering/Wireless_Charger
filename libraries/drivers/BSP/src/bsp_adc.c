@@ -33,6 +33,7 @@
 #include "fsl_lpadc.h"
 #include "fsl_port.h"
 #include "project_settings.h"
+#include "qpc.h"
 
 /*****************************************************************************
 * Module Preprocessor Constants
@@ -42,11 +43,11 @@
 #define LPADC_VOLTAGE_BATTERY_CHANNEL 4U
 #define LPADC_VOLTAGE_BATTERY_CMDID   1U /* CMD1 */
 
-#define LPADC_TEMPERATURE_1_CHANNEL   2U
-#define LPADC_TEMPERATURE_1_CMDID     2U /* CMD2 */
+#define LPADC_TEMPERATURE_CHANNEL     2U
+#define LPADC_TEMPERATURE_CMDID       2U /* CMD2 */
 
-#define LPADC_TEMPERATURE_2_CHANNEL   5U
-#define LPADC_TEMPERATURE_2_CMDID     3U /* CMD3 */
+#define LPADC_CURRENT_CHANNEL         7U
+#define LPADC_CURRENT_CMDID           3U /* CMD3 */
 
 #define LPADC_IRQn                    ADC0_IRQn
 
@@ -98,24 +99,34 @@ void
 bsp_adc_isr_handler(void) {
 
   lpadc_conv_result_t adc_result;
-  uint32_t voltage_1_mV;
-  uint32_t voltage_2_mV;
-  uint32_t voltage_3_mV;
+  uint32_t voltage_mV;
+  uint32_t current_mA;
+  uint32_t temp;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_1_mV = (adc_result.convValue * 3300U) / 65535U;
+  voltage_mV = (adc_result.convValue * 3300U) / 65535U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_2_mV = (adc_result.convValue * 3300U) / 65535U;
+  current_mA = (adc_result.convValue * 3300U) / 65535U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_3_mV = (adc_result.convValue * 3300U) / 65535U;
+  temp = (adc_result.convValue * 3300U) / 65535U;
+
+  //float dt = 1.0f;    // chiamata ogni secondo
+
+  //uint32_t soc = soc_estimate(vbat, ibat, tbat, dt);
+
+  AdcInfoEvt *evt = Q_NEW(AdcInfoEvt, ADC_BATTERY_INFO_SAMPLE_SIG);
+  evt->vbat = voltage_mV;
+  evt->ibat = current_mA;
+  evt->tbat = temp;
+  QF_PUBLISH(&evt->super, 0);
 
   SDK_ISR_EXIT_BARRIER;
 }
@@ -166,7 +177,7 @@ bsp_adc_pin_init(void) {
   PORT_SetPinConfig(PORT2, 3U, &pin_config);
 
   /* PORT2_12 (pin 11) is configured as ADC0_A5 */
-  PORT_SetPinConfig(PORT2, 12U, &pin_config);
+  PORT_SetPinConfig(PORT2, 7U, &pin_config);
 }
 
 /**
@@ -206,16 +217,16 @@ bsp_adc_peripheral_init(void) {
   command_config.channelNumber = LPADC_VOLTAGE_BATTERY_CHANNEL;
   command_config.conversionResolutionMode = kLPADC_ConversionResolutionHigh;
   command_config.sampleTimeMode = kLPADC_SampleTimeADCK67;
-  command_config.chainedNextCommandNumber = LPADC_TEMPERATURE_1_CMDID;
+  command_config.chainedNextCommandNumber = LPADC_TEMPERATURE_CMDID;
   LPADC_SetConvCommandConfig(LPADC_BASE, LPADC_VOLTAGE_BATTERY_CMDID, &command_config);
 
-  command_config.channelNumber = LPADC_TEMPERATURE_1_CHANNEL;
-  command_config.chainedNextCommandNumber = LPADC_TEMPERATURE_2_CMDID;
-  LPADC_SetConvCommandConfig(LPADC_BASE, LPADC_TEMPERATURE_1_CMDID, &command_config);
+  command_config.channelNumber = LPADC_TEMPERATURE_CHANNEL;
+  command_config.chainedNextCommandNumber = LPADC_CURRENT_CMDID;
+  LPADC_SetConvCommandConfig(LPADC_BASE, LPADC_TEMPERATURE_CMDID, &command_config);
 
-  command_config.channelNumber = LPADC_TEMPERATURE_2_CHANNEL;
+  command_config.channelNumber = LPADC_CURRENT_CHANNEL;
   command_config.chainedNextCommandNumber = 0; /* No next command defined. */
-  LPADC_SetConvCommandConfig(LPADC_BASE, LPADC_TEMPERATURE_2_CMDID, &command_config);
+  LPADC_SetConvCommandConfig(LPADC_BASE, LPADC_CURRENT_CMDID, &command_config);
 
   /* Set trigger configuration. */
   LPADC_GetDefaultConvTriggerConfig(&adc_trigger_config);
@@ -246,11 +257,18 @@ bsp_adc_timer_trigger_init(void) {
   CLOCK_AttachClk(kFRO_HF_to_CTIMER2);
 
   CTIMER_GetDefaultConfig(&config);
+  
+  /* Imposto prescaler per avere 1000 Hz */
+  config.prescale = 47999;   // (48MHz / 48000 = 1000 Hz)
+
   CTIMER_Init(CTIMER, &config);
 
   timerClock = CLOCK_GetCTimerClkFreq(1U) / (config.prescale + 1);
 
-  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, 1U, timerClock, false);
+  /* Vogliamo un trigger ogni 1 secondo → period = 1000 */
+  uint32_t period = 1000;
+
+  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
   CTIMER_StartTimer(CTIMER);
 }
 

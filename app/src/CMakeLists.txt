@@ -15,6 +15,8 @@ endif()
 # Lista di file sorgente nella cartella src
 target_sources(${PROJECT_NAME} PRIVATE
     ${MAIN_SRC}
+    ${CMAKE_CURRENT_LIST_DIR}/battery_manager.c
+    ${CMAKE_CURRENT_LIST_DIR}/soc_NiMh.c 
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

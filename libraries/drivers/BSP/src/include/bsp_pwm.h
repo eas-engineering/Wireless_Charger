@@ -67,6 +67,7 @@ void bsp_pwm_init(void);
 
 void bsp_pwm_set_duty(uint32_t duty_percent);
 
+void bsp_pwm_deinit(void);
 /**
  * }
  */

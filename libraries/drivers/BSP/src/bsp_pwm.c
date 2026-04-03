@@ -26,9 +26,13 @@
 /*****************************************************************************
 * Includes
 ******************************************************************************/
+
 #include "bsp_pwm.h"
 #include "fsl_common.h"
 #include "fsl_ctimer.h"
+#include "fsl_gpio.h"
+#include "fsl_inputmux.h"
+#include "fsl_lpadc.h"
 #include "fsl_port.h"
 #include "project_settings.h"
 
@@ -41,6 +45,11 @@
 #define CTIMER_CLK_FREQ               CLOCK_GetCTimerClkFreq(1U)
 #define CTIMER_MAT_PWM_PERIOD_CHANNEL kCTIMER_Match_1
 
+#define CH_CURR_SET_GPIO              GPIO3
+#define CH_CURR_SET_PORT              PORT3
+#define CH_CURR_SET_PIN               10U
+
+#define PWM_20_KHZ                    2400U
 /*****************************************************************************
 * Module Preprocessor Macros
 ******************************************************************************/
@@ -133,7 +142,7 @@ bsp_pwm_pin_init(void) {
                                          kPORT_UnlockRegister};
 
   /* PORT3_10 (pin 19) is configured as PWM0_A0 */
-  PORT_SetPinConfig(PORT3, 10U, &port_config);
+  PORT_SetPinConfig(CH_CURR_SET_PORT, CH_CURR_SET_PIN, &port_config);
 }
 
 /**
@@ -158,7 +167,24 @@ bsp_pwm_timer_init(void) {
   CTIMER_Init(CTIMER, &config);
 
   timerClock = CLOCK_GetCTimerClkFreq(1U) / (config.prescale + 1);
-
-  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 0U, 700000U, timerClock, false);
+  /*20[kHz]*/
+  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 0U, PWM_20_KHZ, timerClock, false);
   CTIMER_StartTimer(CTIMER);
+}
+
+void
+bsp_pwm_deinit(void) {
+  // Ferma il timer PWM
+  CTIMER_StopTimer(CTIMER);
+  // Rimappa il pin come GPIO normale
+  const port_pin_config_t gpio_cfg = {
+    kPORT_PullDisable,        kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
+    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength,
+    kPORT_MuxAsGpio, // <-- GPIO
+    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
+  PORT_SetPinConfig(CH_CURR_SET_PORT, CH_CURR_SET_PIN, &gpio_cfg);
+  // Imposta stato del pin quando PWM è OFF (qui LOW)
+  gpio_pin_config_t out_cfg = {kGPIO_DigitalOutput, 0};
+  GPIO_PinInit(CH_CURR_SET_GPIO, CH_CURR_SET_PIN, &out_cfg);
+  GPIO_PinWrite(CH_CURR_SET_GPIO, CH_CURR_SET_PIN, 0); // forzato low
 }

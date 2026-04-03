@@ -32,7 +32,7 @@
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-
+#include "qpc.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -54,6 +54,15 @@ extern "C" {
 /*****************************************************************************
 * Module Typedefs
 ******************************************************************************/
+
+typedef struct {
+    QEvt super;      
+    uint32_t vbat;   // mV
+    uint32_t ibat;   // mA
+    uint32_t tbat;   
+    uint32_t soc;
+} AdcInfoEvt;
+
 
 /*****************************************************************************
 * Module Variable Definitions

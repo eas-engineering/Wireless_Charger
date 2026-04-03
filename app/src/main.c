@@ -34,6 +34,7 @@
 #include "bsp_i2c.h"
 #include "bsp_stwlc_driver.h"
 #include "project_settings.h"
+#include "battery_manager.h"
 
 #if defined(USE_QPC)
 Q_DEFINE_THIS_FILE // define the name of this file for assertions
@@ -104,12 +105,7 @@ main(void) {
   QActive_psInit(subscrSto, Q_DIM(subscrSto));
 
   /* Initialize other modules */
-  bsp_pwm_init();
-  bsp_pwm_set_duty(50); // Set 50% duty cycle
-
-  bsp_adc_init();  
-
-  bsp_stwlc_driver_init();
+  battery_manager_init();
 
   return QF_run(); // run the QF application
 }
