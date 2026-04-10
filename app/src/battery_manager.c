@@ -28,6 +28,7 @@
 ******************************************************************************/
 #include <stdint.h>
 #include <stdio.h>
+#include "battery_manager.h"
 #include "bsp_adc.h"
 #include "bsp_clock.h"
 #include "bsp_i2c.h"
@@ -42,7 +43,6 @@
 #include "global_signals.h"
 #include "project_settings.h"
 #include "qpc.h"
-#include "battery_manager.h"
 
 #if defined(USE_QPC)
 Q_DEFINE_THIS_FILE // define the name of this file for assertions
@@ -84,10 +84,10 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 #define ON_CHARGE_CURRENT      475
 #define TRICKLE_CHARGE_CURRENT 75
 
-#define MIN_BATTERY_SOC          20
-#define MIN_BATTERY_VOLTAGE_V    13
+#define MIN_BATTERY_SOC        20
+#define MIN_BATTERY_VOLTAGE_V  13
 
-#define EEPROM_SAVE_TIME_MS    60*1000*5
+#define EEPROM_SAVE_TIME_MS    60 * 1000 * 5
 /*****************************************************************************
 * Module Preprocessor Macros
 ******************************************************************************/
@@ -172,12 +172,15 @@ static const uint32_t termination_voltage_charge_mV[5][3] = {
   /* 30 ≤ T < 45°C */
   {16920, 17040, 17400}};
 
+
+  volatile uint16_t debug_current = 600U;
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
 
 void battery_manager_init(void);
 
+static QState battery_manager_initial_state(BatteryManager_t* const me, void const* const par);
 static QState battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e);
@@ -186,9 +189,11 @@ static QState battery_manager_trickle_state(BatteryManager_t* const me, QEvt con
 static QState battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e);
 
+static QState battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e);
+
 static void battery_manager_pin_init(void);
 static bool is_charge_finished(batteryInfo_t battInfo, uint32_t charge_curr_mA);
-static uint32_t curr_to_pwm(uint32_t curr_mA);
+static uint32_t current_to_pwm(uint32_t curr_mA);
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
@@ -211,20 +216,25 @@ void
 battery_manager_init(void) {
   static QEvt const* BatteryManagerQueueSto[10];
   BatteryManager_t* const me = &BatteryManager;
-  QActive_ctor(&me->super, Q_STATE_CAST(&battery_manager_initialize_state));
+  QActive_ctor(&me->super, Q_STATE_CAST(&battery_manager_initial_state));
   QTimeEvt_ctorX(&me->timerEvt, &me->super, TIMEOUT_SIG, 0U);
 
   QACTIVE_START(AO_BatteryManager,
-                3U,                            // QP prio. of the AO
+                4U,                            // QP prio. of the AO
                 BatteryManagerQueueSto,        // event queue storage
                 Q_DIM(BatteryManagerQueueSto), // queue length [events]
                 (void*)0, 0U,                  // no stack storage
                 (void*)0);                     // no initialization param
 
-  battery_manager_pin_init();
-  QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
+  //battery_manager_pin_init();
+  //QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
 }
 
+static QState
+battery_manager_initial_state(BatteryManager_t* const me, void const* const par) {
+  Q_UNUSED_PAR(par);
+  return Q_TRAN(&battery_manager_initialize_state);
+}
 /**
  * @brief Initializes the battery manager module.
  *
@@ -249,7 +259,8 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
     case INITIALIZE_SIG: {
       bsp_adc_init();
       bsp_pwm_init();
-      bsp_i2c_init(&me->super);
+      battery_manager_pin_init();
+      //bsp_i2c_init(&me->super);
       status = Q_TRAN(&battery_manager_startup_state);
       break;
     }
@@ -267,6 +278,39 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
   return status;
 }
 
+static QState
+battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e) {
+  QState status;
+  switch (e->sig) {
+
+    case Q_ENTRY_SIG: {
+      CH_PWM_SYNC_SET();
+      //CH_PWM_SYNC_CLR();
+      bsp_pwm_set_duty(current_to_pwm(debug_current));
+      QTimeEvt_armX(&me->timerEvt, 1000, 0);
+      status = Q_HANDLED();
+      break;
+    }
+
+    case TIMEOUT_SIG: {
+      bsp_pwm_set_duty(current_to_pwm(debug_current));
+      QTimeEvt_armX(&me->timerEvt, 1000, 0);
+      status = Q_HANDLED();
+      break;
+    }
+    
+    case Q_EXIT_SIG: {
+      status = Q_HANDLED();
+      break;
+    }
+
+    default: {
+      status = Q_SUPER(&QHsm_top);
+      break;
+    }
+  }
+  return status;
+}
 
 /**
  * @brief State of the battery manager module.
@@ -307,7 +351,6 @@ battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e) {
   return status;
 }
 
-
 /**
  * @brief The active state of the battery manager module.
  * @details This state is responsible for managing the battery charging/discharging process.
@@ -342,7 +385,6 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
   return status;
 }
 
-
 /**
  * @brief State of the battery manager module.
  * @details This state is responsible for managing the battery charging process.
@@ -359,7 +401,7 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
       CH_PWM_SYNC_SET();
       GREEN_DRV_SET();
       bsp_pwm_init();
-      bsp_pwm_set_duty(curr_to_pwm(ON_CHARGE_CURRENT));
+      bsp_pwm_set_duty(current_to_pwm(ON_CHARGE_CURRENT));
       QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
       status = Q_HANDLED();
       break;
@@ -402,7 +444,6 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
   return status;
 }
 
-
 /**
  * @brief State of the battery manager module.
  * @details This state is responsible for managing the battery trickle charging process.
@@ -415,7 +456,7 @@ battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e) {
 
     case Q_ENTRY_SIG: {
       BLUE_DRV_SET();
-      bsp_pwm_set_duty(curr_to_pwm(TRICKLE_CHARGE_CURRENT));
+      bsp_pwm_set_duty(current_to_pwm(TRICKLE_CHARGE_CURRENT));
       status = Q_HANDLED();
       break;
     }
@@ -550,15 +591,22 @@ static void
 battery_manager_pin_init() {
   /* Abilita clock delle porte GPIO coinvolte */
   CLOCK_EnableClock(kCLOCK_GatePORT1);
+  CLOCK_EnableClock(kCLOCK_GateGPIO1);
   CLOCK_EnableClock(kCLOCK_GatePORT3);
+  CLOCK_EnableClock(kCLOCK_GateGPIO3);
 
   /* Rilascia reset delle porte */
   RESET_ReleasePeripheralReset(kPORT1_RST_SHIFT_RSTn);
   RESET_ReleasePeripheralReset(kPORT3_RST_SHIFT_RSTn);
-
+  RESET_ReleasePeripheralReset(kGPIO1_RST_SHIFT_RSTn);
+  RESET_ReleasePeripheralReset(kGPIO3_RST_SHIFT_RSTn);
   /************************************************************
      *  CONFIGURAZIONE PIN DI USCITA
      ************************************************************/
+  const gpio_pin_config_t out_cfg = {
+      .pinDirection = kGPIO_DigitalOutput,
+      .outputLogic  = 0u
+  };
 
   /* --------------------- V_AUX_EN (P3_0) --------------------- */
   const port_pin_config_t port3_0_cfg = {
@@ -566,7 +614,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT3, V_AUX_EN_PIN, &port3_0_cfg);
-  GPIO_PinInit(GPIO3, V_AUX_EN_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO3, V_AUX_EN_PIN, &out_cfg);
 
   /* --------------------- BAT_SW_EN (P1_9) --------------------- */
   const port_pin_config_t port1_9_cfg = {
@@ -574,7 +622,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT1, BAT_SW_EN_PIN, &port1_9_cfg);
-  GPIO_PinInit(GPIO1, BAT_SW_EN_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO1, BAT_SW_EN_PIN, &out_cfg);
 
   /* --------------------- BLUE_DRV (P1_3) --------------------- */
   const port_pin_config_t port1_3_cfg = {
@@ -582,7 +630,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT1, BLUE_DRV_PIN, &port1_3_cfg);
-  GPIO_PinInit(GPIO1, BLUE_DRV_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO1, BLUE_DRV_PIN, &out_cfg);
 
   /* --------------------- GREEN_DRV (P1_2) --------------------- */
   const port_pin_config_t port1_2_cfg = {
@@ -590,7 +638,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT1, GREEN_DRV_PIN, &port1_2_cfg);
-  GPIO_PinInit(GPIO1, GREEN_DRV_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO1, GREEN_DRV_PIN, &out_cfg);
 
   /* --------------------- RED_DRV (P1_1) --------------------- */
   const port_pin_config_t port1_1_cfg = {
@@ -598,7 +646,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT1, RED_DRV_PIN, &port1_1_cfg);
-  GPIO_PinInit(GPIO1, RED_DRV_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO1, RED_DRV_PIN, &out_cfg);
 
   /* --------------------- CH_PWM_SYNC (P1_29) --------------------- */
   const port_pin_config_t port1_29_cfg = {
@@ -606,7 +654,7 @@ battery_manager_pin_init() {
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
   PORT_SetPinConfig(PORT1, CH_PWM_SYNC_PIN, &port1_29_cfg);
-  GPIO_PinInit(GPIO1, CH_PWM_SYNC_PIN, &(gpio_pin_config_t){kGPIO_DigitalOutput, 0});
+  GPIO_PinInit(GPIO1, CH_PWM_SYNC_PIN, &out_cfg);
 
   /************************************************************
      *  CONFIGURAZIONE PIN DI INGRESSO
@@ -678,19 +726,36 @@ is_charge_finished(batteryInfo_t battInfo, uint32_t charge_curr_mA) {
 }
 
 /**
- * @brief Convert a current in mA to a PWM value
+ * @brief Converte una corrente in milliampere in un duty-cycle PWM
  *
- * This function converts a current in mA to a PWM value,
- * taking into account the maximum charge current.
+ * La funzione converte una corrente in milliampere in un duty-cycle PWM
+ * utilizzando la formula di calcolo per la tensione di uscita ViSET
+ * e successivamente convertendo il valore di tensione in un duty-cycle PWM
  *
- * @param curr_mA The current in mA to convert
- * @return The corresponding PWM value
+ * @param curr_mA Corrente in milliampere da convertire
+ * @return Il duty-cycle PWM corrispondente alla corrente di input
  */
 static uint32_t
-curr_to_pwm(uint32_t curr_mA) {
-  if (curr_mA > MAX_CHARGE_CURRENT) {
-    curr_mA = MAX_CHARGE_CURRENT;
+current_to_pwm(uint32_t curr_mA) {
+  if (curr_mA > 1000) {
+    curr_mA = 1000;
   }
 
-  return curr_mA * 100 / MAX_CHARGE_CURRENT;
+  float Ichg = curr_mA / 1000.0f; // mA → A
+
+  /* ViSET = (I * R3 + IFBVOS) * (R5 / R4) */
+  float Viset = (Ichg * 0.14f + 0.0f) * 18.0f;
+
+  /* Converto ViSET nel duty-cycle PWM */
+  float pwm = 100.0f * (Viset / 3.0f);
+
+  if (pwm < 0.0f) {
+    pwm = 0.0f;
+  }
+  if (pwm > 100.0f) {
+    pwm = 100.0f;
+  }
+
+  uint32_t pwm_value = (uint32_t)(pwm + 0.5f); // Arrotonda al valore intero più vicino
+  return pwm_value;
 }
