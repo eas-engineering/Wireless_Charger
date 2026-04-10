@@ -28,6 +28,7 @@
 ******************************************************************************/
 #include "bsp_qpc.h"
 #include "bsp_qpc_spy.h"
+#include "bsp_tick.h"
 #include "project_settings.h"
 #include "qpc.h"
 
@@ -177,6 +178,8 @@ SysTick_Handler(void) {
   QK_ISR_ENTRY(); // inform QK about entering an ISR
 
   QTIMEEVT_TICK_X(0U, &l_SysTick_Handler); // time events at rate 0
+
+  bsp_tick_inc();
 
 #ifdef Q_SPY
   bsp_qpc_spy_tick();

@@ -31,15 +31,12 @@
 #include "battery_manager.h"
 #include "bsp_adc.h"
 #include "bsp_clock.h"
+#include "bsp_digital_output.h"
 #include "bsp_i2c.h"
+#include "bsp_keypad.h"
+#include "bsp_led.h"
 #include "bsp_pwm.h"
 #include "bsp_stwlc_driver.h"
-#include "fsl_common.h"
-#include "fsl_ctimer.h"
-#include "fsl_gpio.h"
-#include "fsl_inputmux.h"
-#include "fsl_lpadc.h"
-#include "fsl_port.h"
 #include "global_signals.h"
 #include "project_settings.h"
 #include "qpc.h"
@@ -52,34 +49,6 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 * Module Preprocessor Constants
 ******************************************************************************/
 
-#define V_AUX_EN_GPIO          GPIO3
-#define V_AUX_EN_PORT          PORT3
-#define V_AUX_EN_PIN           0U
-
-#define BAT_SW_EN_GPIO         GPIO1
-#define BAT_SW_EN_PORT         PORT1
-#define BAT_SW_EN_PIN          9U
-
-#define BLUE_DRV_GPIO          GPIO1
-#define BLUE_DRV_PORT          PORT1
-#define BLUE_DRV_PIN           3U
-
-#define GREEN_DRV_GPIO         GPIO1
-#define GREEN_DRV_PORT         PORT1
-#define GREEN_DRV_PIN          2U
-
-#define RED_DRV_GPIO           GPIO1
-#define RED_DRV_PORT           PORT1
-#define RED_DRV_PIN            1U
-
-#define CH_PWM_SYNC_GPIO       GPIO1
-#define CH_PWM_SYNC_PORT       PORT1
-#define CH_PWM_SYNC_PIN        0U
-
-#define ON_OFF_SW_GPIO         GPIO1
-#define ON_OFF_SW_PORT         PORT1
-#define ON_OFF_SW_PIN          8U
-
 #define MAX_CHARGE_CURRENT     950
 #define ON_CHARGE_CURRENT      475
 #define TRICKLE_CHARGE_CURRENT 75
@@ -91,30 +60,6 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 /*****************************************************************************
 * Module Preprocessor Macros
 ******************************************************************************/
-
-#define V_AUX_EN_SET()         GPIO_PinWrite(V_AUX_EN_GPIO, V_AUX_EN_PIN, 1)
-#define V_AUX_EN_CLR()         GPIO_PinWrite(V_AUX_EN_GPIO, V_AUX_EN_PIN, 0)
-#define V_AUX_EN_TGL()         GPIO_PortToggle(V_AUX_EN_GPIO, 1U << V_AUX_EN_PIN)
-
-#define BAT_SW_EN_SET()        GPIO_PinWrite(BAT_SW_EN_GPIO, BAT_SW_EN_PIN, 1)
-#define BAT_SW_EN_CLR()        GPIO_PinWrite(BAT_SW_EN_GPIO, BAT_SW_EN_PIN, 0)
-#define BAT_SW_EN_TGL()        GPIO_PortToggle(BAT_SW_EN_GPIO, 1U << BAT_SW_EN_PIN)
-
-#define BLUE_DRV_SET()         GPIO_PinWrite(BLUE_DRV_GPIO, BLUE_DRV_PIN, 1)
-#define BLUE_DRV_CLR()         GPIO_PinWrite(BLUE_DRV_GPIO, BLUE_DRV_PIN, 0)
-#define BLUE_DRV_TGL()         GPIO_PortToggle(BLUE_DRV_GPIO, 1U << BLUE_DRV_PIN)
-
-#define GREEN_DRV_SET()        GPIO_PinWrite(GREEN_DRV_GPIO, GREEN_DRV_PIN, 1)
-#define GREEN_DRV_CLR()        GPIO_PinWrite(GREEN_DRV_GPIO, GREEN_DRV_PIN, 0)
-#define GREEN_DRV_TGL()        GPIO_PortToggle(GREEN_DRV_GPIO, 1U << GREEN_DRV_PIN)
-
-#define RED_DRV_SET()          GPIO_PinWrite(RED_DRV_GPIO, RED_DRV_PIN, 1)
-#define RED_DRV_CLR()          GPIO_PinWrite(RED_DRV_GPIO, RED_DRV_PIN, 0)
-#define RED_DRV_TGL()          GPIO_PortToggle(RED_DRV_GPIO, 1U << RED_DRV_PIN)
-
-#define CH_PWM_SYNC_SET()      GPIO_PinWrite(CH_PWM_SYNC_GPIO, CH_PWM_SYNC_PIN, 1)
-#define CH_PWM_SYNC_CLR()      GPIO_PinWrite(CH_PWM_SYNC_GPIO, CH_PWM_SYNC_PIN, 0)
-#define CH_PWM_SYNC_TGL()      GPIO_PortToggle(CH_PWM_SYNC_GPIO, 1U << CH_PWM_SYNC_PIN)
 
 #define ON_OFF_SW_READ()       GPIO_PinRead(ON_OFF_SW_GPIO, ON_OFF_SW_PIN)
 
@@ -172,8 +117,7 @@ static const uint32_t termination_voltage_charge_mV[5][3] = {
   /* 30 ≤ T < 45°C */
   {16920, 17040, 17400}};
 
-
-  volatile uint16_t debug_current = 600U;
+volatile uint16_t debug_current = 600U;
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
@@ -191,7 +135,6 @@ static QState battery_manager_alarm_state(BatteryManager_t* const me, QEvt const
 
 static QState battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e);
 
-static void battery_manager_pin_init(void);
 static bool is_charge_finished(batteryInfo_t battInfo, uint32_t charge_curr_mA);
 static uint32_t current_to_pwm(uint32_t curr_mA);
 /*****************************************************************************
@@ -235,6 +178,7 @@ battery_manager_initial_state(BatteryManager_t* const me, void const* const par)
   Q_UNUSED_PAR(par);
   return Q_TRAN(&battery_manager_initialize_state);
 }
+
 /**
  * @brief Initializes the battery manager module.
  *
@@ -259,7 +203,9 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
     case INITIALIZE_SIG: {
       bsp_adc_init();
       bsp_pwm_init();
-      battery_manager_pin_init();
+      bsp_digital_output_init();
+      bsp_led_init();
+      keypad_init();
       //bsp_i2c_init(&me->super);
       status = Q_TRAN(&battery_manager_startup_state);
       break;
@@ -284,8 +230,7 @@ battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      CH_PWM_SYNC_SET();
-      //CH_PWM_SYNC_CLR();
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);
       bsp_pwm_set_duty(current_to_pwm(debug_current));
       QTimeEvt_armX(&me->timerEvt, 1000, 0);
       status = Q_HANDLED();
@@ -298,7 +243,7 @@ battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e) {
       status = Q_HANDLED();
       break;
     }
-    
+
     case Q_EXIT_SIG: {
       status = Q_HANDLED();
       break;
@@ -328,9 +273,8 @@ battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case BUTTON_PRESSED_SIG: {
-      BtnEvt const* btn = (BtnEvt const*)e;
-      if (btn->id == 0) { // id_wc_on
+    case BUTTON_PRESSED_SIG: {      
+      if ((Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) && (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT)){ // id_wc_on
         status = Q_TRAN(&battery_manager_on_charge_state);
       } else {
         status = Q_TRAN(&battery_manager_on_state);
@@ -397,9 +341,9 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      V_AUX_EN_SET();
-      CH_PWM_SYNC_SET();
-      GREEN_DRV_SET();
+      bsp_digital_output_set(IO_V_AUX_EN, IO_ON);
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);
+      bsp_led_set(LED_GREEN, LED_ON);
       bsp_pwm_init();
       bsp_pwm_set_duty(current_to_pwm(ON_CHARGE_CURRENT));
       QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
@@ -454,8 +398,8 @@ battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e) {
   QState status;
   switch (e->sig) {
 
-    case Q_ENTRY_SIG: {
-      BLUE_DRV_SET();
+    case Q_ENTRY_SIG: {      
+      bsp_led_set(LED_BLUE, LED_ON);
       bsp_pwm_set_duty(current_to_pwm(TRICKLE_CHARGE_CURRENT));
       status = Q_HANDLED();
       break;
@@ -488,8 +432,8 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
 
     case Q_ENTRY_SIG: {
       bsp_pwm_deinit();
-      BAT_SW_EN_SET();
-      BLUE_DRV_SET();
+      bsp_digital_output_set(IO_BAT_SW_EN, IO_ON);
+      bsp_led_set(LED_BLUE, LED_ON);
       status = Q_HANDLED();
       break;
     }
@@ -510,20 +454,19 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case BUTTON_PRESSED_SIG: {
-      BtnEvt const* btn = (BtnEvt const*)e;
-      if (btn->id == 0) {
-        BAT_SW_EN_CLR();
-        BLUE_DRV_CLR();
-      } else {
-        BAT_SW_EN_CLR();
+    case BUTTON_PRESSED_SIG: {      
+      if ((Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) && (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT)) {
+        bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+        bsp_led_set(LED_BLUE, LED_OFF);
+      } else {        
+        bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       }
       status = Q_HANDLED();
       break;
     }
 
-    case OFF_SIG: {
-      BAT_SW_EN_CLR();
+    case OFF_SIG: {      
+      bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       status = Q_HANDLED();
       break;
     }
@@ -554,17 +497,17 @@ battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      BAT_SW_EN_CLR();
-      CH_PWM_SYNC_CLR();
+      bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_OFF);
       //pwm a zero
-      RED_DRV_SET();
+      bsp_led_set(LED_RED, LED_ON);
       QTimeEvt_armX(&me->timerEvt, 5000, 0);
       status = Q_HANDLED();
       break;
     }
 
-    case TIMEOUT_SIG: {
-      BAT_SW_EN_CLR();
+    case TIMEOUT_SIG: {      
+      bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       status = Q_HANDLED();
       break;
     }
@@ -580,100 +523,6 @@ battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e) {
     }
   }
   return status;
-}
-
-/**
- * @brief Initialize the pins of the battery manager.
- *
- * @details This function configures the pins used by the battery manager.
- */
-static void
-battery_manager_pin_init() {
-  /* Abilita clock delle porte GPIO coinvolte */
-  CLOCK_EnableClock(kCLOCK_GatePORT1);
-  CLOCK_EnableClock(kCLOCK_GateGPIO1);
-  CLOCK_EnableClock(kCLOCK_GatePORT3);
-  CLOCK_EnableClock(kCLOCK_GateGPIO3);
-
-  /* Rilascia reset delle porte */
-  RESET_ReleasePeripheralReset(kPORT1_RST_SHIFT_RSTn);
-  RESET_ReleasePeripheralReset(kPORT3_RST_SHIFT_RSTn);
-  RESET_ReleasePeripheralReset(kGPIO1_RST_SHIFT_RSTn);
-  RESET_ReleasePeripheralReset(kGPIO3_RST_SHIFT_RSTn);
-  /************************************************************
-     *  CONFIGURAZIONE PIN DI USCITA
-     ************************************************************/
-  const gpio_pin_config_t out_cfg = {
-      .pinDirection = kGPIO_DigitalOutput,
-      .outputLogic  = 0u
-  };
-
-  /* --------------------- V_AUX_EN (P3_0) --------------------- */
-  const port_pin_config_t port3_0_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT3, V_AUX_EN_PIN, &port3_0_cfg);
-  GPIO_PinInit(GPIO3, V_AUX_EN_PIN, &out_cfg);
-
-  /* --------------------- BAT_SW_EN (P1_9) --------------------- */
-  const port_pin_config_t port1_9_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, BAT_SW_EN_PIN, &port1_9_cfg);
-  GPIO_PinInit(GPIO1, BAT_SW_EN_PIN, &out_cfg);
-
-  /* --------------------- BLUE_DRV (P1_3) --------------------- */
-  const port_pin_config_t port1_3_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, BLUE_DRV_PIN, &port1_3_cfg);
-  GPIO_PinInit(GPIO1, BLUE_DRV_PIN, &out_cfg);
-
-  /* --------------------- GREEN_DRV (P1_2) --------------------- */
-  const port_pin_config_t port1_2_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, GREEN_DRV_PIN, &port1_2_cfg);
-  GPIO_PinInit(GPIO1, GREEN_DRV_PIN, &out_cfg);
-
-  /* --------------------- RED_DRV (P1_1) --------------------- */
-  const port_pin_config_t port1_1_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, RED_DRV_PIN, &port1_1_cfg);
-  GPIO_PinInit(GPIO1, RED_DRV_PIN, &out_cfg);
-
-  /* --------------------- CH_PWM_SYNC (P1_29) --------------------- */
-  const port_pin_config_t port1_29_cfg = {
-    kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
-    kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
-    kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, CH_PWM_SYNC_PIN, &port1_29_cfg);
-  GPIO_PinInit(GPIO1, CH_PWM_SYNC_PIN, &out_cfg);
-
-  /************************************************************
-     *  CONFIGURAZIONE PIN DI INGRESSO
-     ************************************************************/
-
-  /* --------------------- ON_OFF_SW (P1_8) --------------------- */
-  const port_pin_config_t port1_8_cfg = {kPORT_PullUp,
-                                         kPORT_LowPullResistor,
-                                         kPORT_FastSlewRate,
-                                         kPORT_PassiveFilterDisable,
-                                         kPORT_OpenDrainDisable,
-                                         kPORT_LowDriveStrength,
-                                         kPORT_NormalDriveStrength,
-                                         kPORT_MuxAsGpio,
-                                         kPORT_InputBufferEnable,
-                                         kPORT_InputNormal,
-                                         kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, ON_OFF_SW_PIN, &port1_8_cfg);
-  GPIO_PinInit(GPIO1, ON_OFF_SW_PIN, &(gpio_pin_config_t){kGPIO_DigitalInput, 0});
 }
 
 /**

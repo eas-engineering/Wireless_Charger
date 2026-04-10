@@ -1,35 +1,45 @@
-/*****************************************************************************
-* Filename              :   global_signals.h
-* Author                :   Giulio Dalla Vecchia
-* Origin Date           :   27 August 2024
-*
-* Copyright (c) 2024 EAS SPA. All rights reserved.
-*
-******************************************************************************/
+/******************************************************************************
+ * Filename              : bsp_digital_output.h
+ * Author                : Giulio Dalla Vecchia
+ * Origin Date           : 10 April 2026
+ *
+ * Copyright (c) 2025 EAS Engineering srl.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ ******************************************************************************/
 
-/** @file global_signals.h
+/** @file bsp_digital_output.h
  *  @brief This module handles the doxygen comments.
  *
  *  This is the header file for the definition of doxygen comments function.
  */
 
-#ifndef GLOBAL_SIGNALS_H_
-#define GLOBAL_SIGNALS_H_
+#ifndef BSP_DIGITAL_OUTPUT_H_
+#define BSP_DIGITAL_OUTPUT_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include "qpc.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * \defgroup        GlobalSignals
- * \brief           This groups rappresents the list of the signals used by
- *                  the system
+ * \defgroup        Template
+ * \brief           Template functions group
  * \{
  */
 
@@ -45,40 +55,28 @@ extern "C" {
 * Module Typedefs
 ******************************************************************************/
 
+typedef enum {
+  IO_OFF = 0,
+  IO_ON = 1,
+} io_state_t;
+
+typedef enum {
+  IO_V_AUX_EN = 0,
+  IO_BAT_SW_EN = 1,
+  IO_CH_PWM_SYNC = 2,
+} io_id_t;
+
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
-
-enum GlobalSignals {
-  DUMMY_SIG = Q_USER_SIG,
-  ADC_BATTERY_INFO_SAMPLE_SIG,
-  EEPROM_WRITE_SIG,
-  INITIALIZE_SIG,
-  BUTTON_PRESSED_SIG,
-  MAX_PUB_SIG, // the last published signal
-
-  
-  OFF_SIG,
-  ALARM_SIG,
-  TIMEOUT_SIG,
-
-  BSP_I2C_GROUP,
-  BSP_I2C_GROUP_END = BSP_I2C_GROUP + 20U,
-
-  MAX_SIG // the last signal
-};
 
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
 
-#ifdef Q_SPY
-static inline void
-produce_sig_dict(void) {
-  QS_SIG_DICTIONARY(DUMMY_SIG, (void*)0);
-  QS_SIG_DICTIONARY(TIMEOUT_SIG, (void*)0);
-}
-#endif // def Q_SPY
+void bsp_digital_output_init(void);
+
+void bsp_digital_output_set(io_id_t id, io_state_t state);
 
 /**
  * }
@@ -88,6 +86,6 @@ produce_sig_dict(void) {
 } // extern "C"
 #endif
 
-#endif /*GLOBAL_SIGNALS_H_*/
+#endif /*BSP_DIGITAL_OUTPUT_H_*/
 
 /*** End of File *************************************************************/

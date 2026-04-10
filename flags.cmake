@@ -35,11 +35,13 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Linker options
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -Xlinker -no-warn-rwx-segments
     -T${ProjDirPath}/app/src/linker_flash.ld  
-    --specs=nosys.specs    
+    --specs=nosys.specs
+    -flto    
     -Wl,-Map=${CMAKE_PROJECT_NAME}.map
     -Wl,--gc-sections
     -Wl,--print-memory-usage
     -Wl,--sort-section=alignment
-    -Wl,--cref
+    -Wl,--cref    
 )

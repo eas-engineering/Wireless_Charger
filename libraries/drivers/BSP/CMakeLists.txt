@@ -8,6 +8,14 @@ file(GLOB SEGGER_RTT_SOURCE_FILES_LIST
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_i2c.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_qpc.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_stwlc_driver.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_input.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_input_dc.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_button.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_keypad.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_timer.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_led.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_digital_output.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_tick.c"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
