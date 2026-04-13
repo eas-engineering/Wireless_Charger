@@ -29,6 +29,7 @@
 #include "bsp_qpc.h"
 #include "bsp_qpc_spy.h"
 #include "bsp_tick.h"
+#include "bsp_timer.h"
 #include "project_settings.h"
 #include "qpc.h"
 
@@ -180,6 +181,7 @@ SysTick_Handler(void) {
   QTIMEEVT_TICK_X(0U, &l_SysTick_Handler); // time events at rate 0
 
   bsp_tick_inc();
+  bsp_timer_tick();
 
 #ifdef Q_SPY
   bsp_qpc_spy_tick();

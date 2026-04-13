@@ -58,6 +58,7 @@ extern "C" {
  */
 typedef enum {
   BSP_BUTTON_NO_EVENT = 0x00,
+  BSP_BUTTON_FIRST_BOOT_PRESS_EVENT, /*!< Special event for the first press after boot */
   BSP_BUTTON_NORMAL_PRESS_EVENT, /*!< Normal press type, released */
   BSP_BUTTON_LONG_PRESS_EVENT,   /*!< Long press type */
   BSP_BUTTON_ONPRESSED_EVENT,    /*!< Button pressed */

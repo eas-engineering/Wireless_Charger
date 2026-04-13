@@ -61,8 +61,6 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 * Module Preprocessor Macros
 ******************************************************************************/
 
-#define ON_OFF_SW_READ()       GPIO_PinRead(ON_OFF_SW_GPIO, ON_OFF_SW_PIN)
-
   /*****************************************************************************
 * Module Typedefs
 ******************************************************************************/
@@ -168,8 +166,6 @@ battery_manager_init(void) {
                 Q_DIM(BatteryManagerQueueSto), // queue length [events]
                 (void*)0, 0U,                  // no stack storage
                 (void*)0);                     // no initialization param
-
-  //battery_manager_pin_init();
   //QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
 }
 
@@ -194,6 +190,9 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
+
+      QActive_subscribe(&me->super, BUTTON_PRESSED_SIG);
+
       static const QEvt evt = QEVT_INITIALIZER(INITIALIZE_SIG); // lo farà l'EEPROM quando è ready
       QACTIVE_POST(AO_BatteryManager, &evt, 0U);
       status = Q_HANDLED();
@@ -273,11 +272,17 @@ battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case BUTTON_PRESSED_SIG: {      
-      if ((Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) && (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT)){ // id_wc_on
-        status = Q_TRAN(&battery_manager_on_charge_state);
+    case BUTTON_PRESSED_SIG: {
+      if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) {
+        if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
+          status = Q_TRAN(&battery_manager_on_charge_state);
+        }
+      } else if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
+        if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
+          status = Q_TRAN(&battery_manager_on_state);
+        }
       } else {
-        status = Q_TRAN(&battery_manager_on_state);
+        status = Q_HANDLED();
       }
       break;
     }
@@ -341,12 +346,13 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      bsp_digital_output_set(IO_V_AUX_EN, IO_ON);
-      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);
+      bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       bsp_led_set(LED_GREEN, LED_ON);
+      bsp_digital_output_set(IO_V_AUX_EN, IO_ON);
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);     
       bsp_pwm_init();
       bsp_pwm_set_duty(current_to_pwm(ON_CHARGE_CURRENT));
-      QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
+      //QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
       status = Q_HANDLED();
       break;
     }
@@ -398,7 +404,7 @@ battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e) {
   QState status;
   switch (e->sig) {
 
-    case Q_ENTRY_SIG: {      
+    case Q_ENTRY_SIG: {
       bsp_led_set(LED_BLUE, LED_ON);
       bsp_pwm_set_duty(current_to_pwm(TRICKLE_CHARGE_CURRENT));
       status = Q_HANDLED();
@@ -428,10 +434,10 @@ battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e) {
 static QState
 battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
   QState status;
+
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      bsp_pwm_deinit();
       bsp_digital_output_set(IO_BAT_SW_EN, IO_ON);
       bsp_led_set(LED_BLUE, LED_ON);
       status = Q_HANDLED();
@@ -454,18 +460,29 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case BUTTON_PRESSED_SIG: {      
-      if ((Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) && (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT)) {
-        bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
-        bsp_led_set(LED_BLUE, LED_OFF);
-      } else {        
-        bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+    case BUTTON_PRESSED_SIG: {
+      if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) {
+        if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
+          //bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+          bsp_led_set(LED_BLUE, LED_OFF);
+          status = Q_TRAN(&battery_manager_on_charge_state);
+        }
+      } else if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
+        if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
+          static QEvt const evt = QEVT_INITIALIZER(OFF_SIG);
+          QACTIVE_POST(AO_BatteryManager, &evt, 0U);
+        }
+        else {
+          status = Q_HANDLED();
+        }
+      } else {
+        status = Q_HANDLED();
       }
-      status = Q_HANDLED();
       break;
     }
 
-    case OFF_SIG: {      
+    case OFF_SIG: {
+      bsp_led_set(LED_BLUE, LED_OFF);
       bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       status = Q_HANDLED();
       break;
@@ -506,7 +523,7 @@ battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case TIMEOUT_SIG: {      
+    case TIMEOUT_SIG: {
       bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       status = Q_HANDLED();
       break;

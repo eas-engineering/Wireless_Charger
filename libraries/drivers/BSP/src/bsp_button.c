@@ -25,12 +25,12 @@
  * Includes
  *******************************************************************************/
 #include <assert.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "bsp_button.h"
 #include "bsp_config.h"
-#include "bsp_timer.h"
 #include "bsp_tick.h"
+#include "bsp_timer.h"
 
 /******************************************************************************
  * Module Preprocessor Constants
@@ -40,7 +40,6 @@
 #define BUTTON_STATE_START       (uint8_t)0U
 #define BUTTON_STATE_PRESSED     (uint8_t)1U
 #define BUTTON_STATE_WAITRELEASE (uint8_t)2U
-
 /******************************************************************************
  * Module Preprocessor Macros
  *******************************************************************************/
@@ -86,7 +85,7 @@ bsp_button_add(bsp_button_t* const _this, bsp_button_cfg_t* p_cfg) {
 
   /* Initialize button structure */
   _this->pf_callback = NULL;
-  _this->State = BUTTON_STATE_START;
+  _this->State = BUTTON_STATE_START;//BUTTON_STATE_START;
   _this->PressNormalTime = p_cfg->ui32_normal_press_time;
   _this->PressLongTime = p_cfg->ui32_long_press_time;
   _this->eventNow = BSP_INPUT_NO_EVENT;
@@ -270,20 +269,8 @@ bsp_button_process(bsp_button_t* const _this) {
         /* Call function callback */
         _this->pf_callback(_this, BSP_BUTTON_RELEASE_EVENT);
       }
-
       /* Go to stage 0 again */
       _this->State = BUTTON_STATE_START;
-    } else if (input_state == BSP_INPUT_ACTIVE_STATE) {
-      if ((now - _this->StartTime) > _this->PressLongTime) {
-        /* Button pressed OK, call function */
-        if (_this->pf_callback != NULL) {
-          /* Call function callback */
-          _this->pf_callback(_this, BSP_BUTTON_LONG_PRESS_EVENT);
-        }
-
-        /* Save pressed time */
-        _this->StartTime = now;
-      }
     }
   }
 }

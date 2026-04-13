@@ -85,6 +85,7 @@ typedef enum {
  * @brief  Input configuration typedef
  */
 typedef struct {
+  PORT_Type* port;
   GPIO_Type* gpio;
   uint32_t pin;
   uint32_t ui32_debounce_time_ms;

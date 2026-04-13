@@ -35,7 +35,7 @@
 
 #define CHARGE_BTN_GPIO GPIO3
 #define CHARGE_BTN_PORT PORT3
-#define CHARGE_BTN_PIN  3U
+#define CHARGE_BTN_PIN  1U
 
 /*****************************************************************************
 * Module Preprocessor Macros
@@ -94,7 +94,7 @@ keypad_init(void) {
     [BSP_KEYPAD_CHARGE_BTN] = {.port = CHARGE_BTN_PORT,
                                .gpio = CHARGE_BTN_GPIO,
                                .pin = CHARGE_BTN_PIN,
-                               .active_state = BSP_INPUT_DC_ACTIVE_LOW_STATE,
+                               .active_state = BSP_INPUT_DC_ACTIVE_HIGH_STATE,
                                .ui32_debounce_time_ms = 30},
   };
 
@@ -158,17 +158,21 @@ bsp_keypad_set_long_press_time(bsp_keypad_btn_t btn, uint32_t time) {
 static void
 initialize_keypad_gpio(bsp_input_dc_cfg_t const* config_ptr, int32_t num) {
 
-  port_pin_config_t port1_8_cfg = {kPORT_PullUp,
-                                   kPORT_LowPullResistor,
-                                   kPORT_FastSlewRate,
-                                   kPORT_PassiveFilterDisable,
-                                   kPORT_OpenDrainDisable,
-                                   kPORT_LowDriveStrength,
-                                   kPORT_NormalDriveStrength,
-                                   kPORT_MuxAsGpio,
-                                   kPORT_InputBufferEnable,
-                                   kPORT_InputNormal,
-                                   kPORT_UnlockRegister};
+  port_pin_config_t port_cfg = {kPORT_PullDisable,
+                                kPORT_LowPullResistor,
+                                kPORT_FastSlewRate,
+                                kPORT_PassiveFilterDisable,
+                                kPORT_OpenDrainDisable,
+                                kPORT_LowDriveStrength,
+                                kPORT_NormalDriveStrength,
+                                kPORT_MuxAsGpio,
+                                kPORT_InputBufferEnable,
+                                kPORT_InputNormal,
+                                kPORT_UnlockRegister};
+  
+  gpio_pin_config_t gpio_cfg;
+  gpio_cfg.pinDirection = kGPIO_DigitalInput;
+  gpio_cfg.outputLogic = 0;
 
   /* Abilita clock delle porte GPIO coinvolte */
   CLOCK_EnableClock(kCLOCK_GatePORT1);
@@ -183,8 +187,8 @@ initialize_keypad_gpio(bsp_input_dc_cfg_t const* config_ptr, int32_t num) {
   RESET_ReleasePeripheralReset(kGPIO3_RST_SHIFT_RSTn);
 
   for (int32_t idxLine = 0U; idxLine < num; ++idxLine) {
-    PORT_SetPinConfig(config_ptr->port, config_ptr->pin, &port1_8_cfg);
-    GPIO_PinInit(config_ptr->gpio, config_ptr->pin, &(gpio_pin_config_t){kGPIO_DigitalInput, 0});
+    PORT_SetPinConfig(config_ptr->port, config_ptr->pin, &port_cfg);
+    GPIO_PinInit(config_ptr->gpio, config_ptr->pin, &gpio_cfg);
     ++config_ptr;
   }
 }
