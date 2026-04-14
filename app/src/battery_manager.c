@@ -76,9 +76,20 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 
   typedef struct {
   uint16_t soc;
-  uint16_t vbat;
-  uint16_t ibat;
-  uint16_t tbat;
+  uint16_t vbat_raw;
+  uint16_t ibat_raw;
+  uint16_t tbat_raw;
+  uint16_t ibat_history[5];
+  uint16_t vbat_history[5];
+  uint16_t tbat_history[5];
+  uint8_t filter_index;
+  uint8_t sample_count;
+  uint32_t ibat_sum;
+  uint32_t vbat_sum;
+  uint32_t tbat_sum;
+  uint16_t ibat_mm;
+  uint16_t vbat_mm;
+  uint16_t tbat_mm;
 } batteryInfo_t;
 
 // Active Object
@@ -155,6 +166,7 @@ static QState battery_manager_alarm_state(BatteryManager_t* const me, QEvt const
 
 static QState battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e);
 
+static void batteryInfo_update_moving_average(batteryInfo_t* const battInfo);
 static uint8_t charger_manager(batteryInfo_t battInfo, uint32_t max_charge_curr_mA);
 static uint32_t current_to_pwm(uint32_t curr_mA);
 /*****************************************************************************
@@ -228,6 +240,18 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
       bsp_led_init();
       keypad_init();
       bsp_i2c_init(&me->super);
+            
+      /* Inizializza filtri media mobile */ 
+      me->battInfo.filter_index = 0;
+      me->battInfo.sample_count = 0;
+      me->battInfo.ibat_sum = 0;
+      me->battInfo.vbat_sum = 0;
+      me->battInfo.tbat_sum = 0;
+      for (int i = 0; i < 5; i++) {
+        me->battInfo.ibat_history[i] = 0;
+        me->battInfo.vbat_history[i] = 0;
+        me->battInfo.tbat_history[i] = 0;
+      }
       status = Q_TRAN(&battery_manager_startup_state);
       break;
     }
@@ -377,7 +401,6 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
       bsp_pwm_init();
       //bsp_pwm_set_duty(current_to_pwm(debug_current));
       bsp_adc_init();     
-
       //QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
       status = Q_HANDLED();
       break;
@@ -385,14 +408,14 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
 
     case ADC_BATTERY_INFO_SAMPLE_SIG: {
       me->battInfo.soc = Q_EVT_CAST(AdcInfoEvt)->soc;
-      me->battInfo.ibat = (uint16_t)((((VCC_HALF_MV > Q_EVT_CAST(AdcInfoEvt)->ibat)
+      me->battInfo.ibat_raw = (uint16_t)((((VCC_HALF_MV > Q_EVT_CAST(AdcInfoEvt)->ibat)
             ? (VCC_HALF_MV - Q_EVT_CAST(AdcInfoEvt)->ibat)
             : (Q_EVT_CAST(AdcInfoEvt)->ibat - VCC_HALF_MV))
             * CURRENT_RATIO) / VCC_MV);
-      me->battInfo.vbat = Q_EVT_CAST(AdcInfoEvt)->vbat*VOLTAGE_RATIO;
-      me->battInfo.tbat = Q_EVT_CAST(AdcInfoEvt)->tbat;
-      // status = Q_HANDLED();
-      // break;
+      me->battInfo.vbat_raw = Q_EVT_CAST(AdcInfoEvt)->vbat * VOLTAGE_RATIO;
+      me->battInfo.tbat_raw = Q_EVT_CAST(AdcInfoEvt)->tbat;    
+      batteryInfo_update_moving_average(&me->battInfo);
+    
       uint8_t charger_state = charger_manager(me->battInfo, 800U);
       switch (charger_state)
       {        
@@ -513,11 +536,16 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
 
     case ADC_BATTERY_INFO_SAMPLE_SIG: {
       me->battInfo.soc = Q_EVT_CAST(AdcInfoEvt)->soc;
-      me->battInfo.ibat = Q_EVT_CAST(AdcInfoEvt)->ibat;
-      me->battInfo.vbat = Q_EVT_CAST(AdcInfoEvt)->vbat;
-      me->battInfo.tbat = Q_EVT_CAST(AdcInfoEvt)->tbat;
+      me->battInfo.ibat_raw = (uint16_t)((((VCC_HALF_MV > Q_EVT_CAST(AdcInfoEvt)->ibat)
+            ? (VCC_HALF_MV - Q_EVT_CAST(AdcInfoEvt)->ibat)
+            : (Q_EVT_CAST(AdcInfoEvt)->ibat - VCC_HALF_MV))
+            * CURRENT_RATIO) / VCC_MV);
+      me->battInfo.vbat_raw = Q_EVT_CAST(AdcInfoEvt)->vbat * VOLTAGE_RATIO;
+      me->battInfo.tbat_raw = Q_EVT_CAST(AdcInfoEvt)->tbat;    
+      batteryInfo_update_moving_average(&me->battInfo);
 
-      if (me->battInfo.vbat < (MIN_BATTERY_VOLTAGE_V * 1000)) {
+      /*TODO*/
+      if (me->battInfo.vbat_mm > (MIN_BATTERY_VOLTAGE_V * 1000)) {
         status = Q_HANDLED();
       } else {
         static QEvt const evt = QEVT_INITIALIZER(OFF_SIG);
@@ -627,19 +655,19 @@ charger_manager(batteryInfo_t battInfo, uint32_t max_charge_curr_mA) {
   int idx_tbat, idx_ibat;
   static uint32_t charge_curr_mA;
 
-  if(battInfo.vbat < (MIN_BATTERY_VOLTAGE_V * 1000)) {
+  if(battInfo.vbat_mm < (MIN_BATTERY_VOLTAGE_V * 1000)) {
     return CHARGER_STATE_VOLT_ERROR;
   }
 
   /* Corrente massima erogabile dal SEPIC in mA, calcolata come P=V*I */
-  charge_curr_mA = MAX_SEPIC_POWER_W * 1000 / battInfo.vbat; 
+  charge_curr_mA = MAX_SEPIC_POWER_W * 1000 / battInfo.vbat_mm; 
   if(charge_curr_mA > max_charge_curr_mA) {
     charge_curr_mA = max_charge_curr_mA;
   } 
 
   /* Trova indice fascia temperatura */
   for (idx_tbat = 0; idx_tbat < 5; idx_tbat++) {
-    if( (battInfo.tbat >= temp_ranges[idx_tbat][0]) && (battInfo.tbat < temp_ranges[idx_tbat ][1]) ) {
+    if( (battInfo.tbat_mm >= temp_ranges[idx_tbat][0]) && (battInfo.tbat_mm < temp_ranges[idx_tbat ][1]) ) {
       break;
     }
   }
@@ -664,13 +692,44 @@ charger_manager(batteryInfo_t battInfo, uint32_t max_charge_curr_mA) {
   uint16_t termination_mV = termination_voltage_charge_mV[idx_tbat][idx_ibat];
 
   /* Controllo terminazione */
-  if (battInfo.vbat <= termination_mV) {
+  if (battInfo.vbat_mm <= termination_mV) {
     return CHARGER_CC_STATE_CHARGING;
   }
-  else if((battInfo.vbat > termination_mV) && (charge_curr_mA > END_CHARGE_CURRENT_MA)) {
+  else if((battInfo.vbat_mm > termination_mV) && (charge_curr_mA > END_CHARGE_CURRENT_MA)) {
     return CHARGER_CV_STATE_CHARGING;
   }
   return CHARGER_STATE_CV_COMPLETED;
+}
+
+static void
+batteryInfo_update_moving_average(batteryInfo_t* const battInfo) {
+  battInfo->ibat_sum -= battInfo->ibat_history[battInfo->filter_index];
+  battInfo->ibat_history[battInfo->filter_index] = battInfo->ibat_raw;
+  battInfo->ibat_sum += battInfo->ibat_raw;
+
+  battInfo->vbat_sum -= battInfo->vbat_history[battInfo->filter_index];
+  battInfo->vbat_history[battInfo->filter_index] = battInfo->vbat_raw;
+  battInfo->vbat_sum += battInfo->vbat_raw;
+
+  battInfo->tbat_sum -= battInfo->tbat_history[battInfo->filter_index];
+  battInfo->tbat_history[battInfo->filter_index] = battInfo->tbat_raw;
+  battInfo->tbat_sum += battInfo->tbat_raw;
+
+  if (battInfo->sample_count < 5U) {
+    battInfo->sample_count += 1U;
+  }
+
+  battInfo->filter_index = (battInfo->filter_index + 1U) % 5U;
+
+  if (battInfo->sample_count < 5U) {
+    battInfo->ibat_mm = battInfo->ibat_raw;
+    battInfo->vbat_mm = battInfo->vbat_raw;
+    battInfo->tbat_mm = battInfo->tbat_raw;
+  } else {
+    battInfo->ibat_mm = (uint16_t)(battInfo->ibat_sum / 5U);
+    battInfo->vbat_mm = (uint16_t)(battInfo->vbat_sum / 5U);
+    battInfo->tbat_mm = (uint16_t)(battInfo->tbat_sum / 5U);
+  }
 }
 
 /**
