@@ -56,6 +56,15 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 #define MIN_BATTERY_SOC        20
 #define MIN_BATTERY_VOLTAGE_V  13
 
+#define VOLTAGE_RATIO 1000U/1525U
+#define CURRENT_RATIO 12500U
+
+#define SEPIC_EFF 26U /* Efficienza del convertitore SEPIC, da misurare sperimentalmente */
+#define MAX_WLC_POWER_W 15U /* Potenza massima erogabile dal caricatore wireless, da misurare sperimentalmente */
+#define END_CHARGE_CURRENT_MA 100U /* Corrente di fine carica, da misurare sperimentalmente */
+#define MAX_SEPIC_POWER_W 11U /* Potenza massima erogabile dal convertitore SEPIC, da misurare sperimentalmente */
+#define VCC_HALF_MV 1636U
+#define VCC_MV 3272U
 #define EEPROM_SAVE_TIME_MS    60 * 1000 * 5
 /*****************************************************************************
 * Module Preprocessor Macros
@@ -77,15 +86,16 @@ typedef struct {
   QActive super;
   QTimeEvt timerEvt;
   batteryInfo_t battInfo;
+  bool LedIsOn;
 } BatteryManager_t;
 
 /* Fasce di temperatura (°C) */
 static const int16_t temp_ranges[5][2] = {
-  {-10, 0}, // -10 ≤ T < 0
-  {0, 10},  // 0 ≤ T < 10
-  {10, 20}, // 10 ≤ T < 20
-  {20, 30}, // 20 ≤ T < 30
-  {30, 45}  // 30 ≤ T < 45
+  {-1000, 0}, // -10 ≤ T < 0
+  {0, 1000},  // 0 ≤ T < 10
+  {1000, 2000}, // 10 ≤ T < 20
+  {2000, 3000}, // 20 ≤ T < 30
+  {3000, 4500}  // 30 ≤ T < 45
 };
 
 /* Fasce di corrente (It rate) */
@@ -116,6 +126,18 @@ static const uint32_t termination_voltage_charge_mV[5][3] = {
   {16920, 17040, 17400}};
 
 volatile uint16_t debug_current = 600U;
+
+
+enum {
+  CHARGER_CC_STATE_CHARGING = 0,
+  CHARGER_CV_STATE_CHARGING,
+  CHARGER_STATE_CC_COMPLETED,
+  CHARGER_STATE_CV_COMPLETED,
+  CHARGER_STATE_CURR_ERROR,
+  CHARGER_STATE_TEMP_ERROR,
+  CHARGER_STATE_VOLT_ERROR
+};
+
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
@@ -127,13 +149,13 @@ static QState battery_manager_initialize_state(BatteryManager_t* const me, QEvt 
 static QState battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e);
-static QState battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e);
+static QState battery_manager_end_charge_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e);
 static QState battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e);
 
 static QState battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e);
 
-static bool is_charge_finished(batteryInfo_t battInfo, uint32_t charge_curr_mA);
+static uint8_t charger_manager(batteryInfo_t battInfo, uint32_t max_charge_curr_mA);
 static uint32_t current_to_pwm(uint32_t curr_mA);
 /*****************************************************************************
 * Module Variable Definitions
@@ -166,7 +188,7 @@ battery_manager_init(void) {
                 Q_DIM(BatteryManagerQueueSto), // queue length [events]
                 (void*)0, 0U,                  // no stack storage
                 (void*)0);                     // no initialization param
-  //QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
+  QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
 }
 
 static QState
@@ -205,7 +227,7 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
       bsp_digital_output_init();
       bsp_led_init();
       keypad_init();
-      //bsp_i2c_init(&me->super);
+      bsp_i2c_init(&me->super);
       status = Q_TRAN(&battery_manager_startup_state);
       break;
     }
@@ -229,8 +251,9 @@ battery_manager_debug_state(BatteryManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
+      bsp_pwm_init();
+      bsp_pwm_set_duty(50U);
       bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);
-      bsp_pwm_set_duty(current_to_pwm(debug_current));
       QTimeEvt_armX(&me->timerEvt, 1000, 0);
       status = Q_HANDLED();
       break;
@@ -347,11 +370,14 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
 
     case Q_ENTRY_SIG: {
       bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+      bsp_led_set(LED_BLUE, LED_OFF);
       bsp_led_set(LED_GREEN, LED_ON);
       bsp_digital_output_set(IO_V_AUX_EN, IO_ON);
-      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);     
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_ON);
       bsp_pwm_init();
-      bsp_pwm_set_duty(current_to_pwm(ON_CHARGE_CURRENT));
+      //bsp_pwm_set_duty(current_to_pwm(debug_current));
+      bsp_adc_init();     
+
       //QTimeEvt_armX(&me->timerEvt, EEPROM_SAVE_TIME_MS, 0);
       status = Q_HANDLED();
       break;
@@ -359,14 +385,38 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
 
     case ADC_BATTERY_INFO_SAMPLE_SIG: {
       me->battInfo.soc = Q_EVT_CAST(AdcInfoEvt)->soc;
-      me->battInfo.ibat = Q_EVT_CAST(AdcInfoEvt)->ibat;
-      me->battInfo.vbat = Q_EVT_CAST(AdcInfoEvt)->vbat;
+      me->battInfo.ibat = (uint16_t)((((VCC_HALF_MV > Q_EVT_CAST(AdcInfoEvt)->ibat)
+            ? (VCC_HALF_MV - Q_EVT_CAST(AdcInfoEvt)->ibat)
+            : (Q_EVT_CAST(AdcInfoEvt)->ibat - VCC_HALF_MV))
+            * CURRENT_RATIO) / VCC_MV);
+      me->battInfo.vbat = Q_EVT_CAST(AdcInfoEvt)->vbat*VOLTAGE_RATIO;
       me->battInfo.tbat = Q_EVT_CAST(AdcInfoEvt)->tbat;
-
-      if (is_charge_finished(me->battInfo, ON_CHARGE_CURRENT)) {
-        status = Q_TRAN(&battery_manager_trickle_state);
-      } else {
-        status = Q_HANDLED();
+      // status = Q_HANDLED();
+      // break;
+      uint8_t charger_state = charger_manager(me->battInfo, 800U);
+      switch (charger_state)
+      {        
+        case CHARGER_CC_STATE_CHARGING:
+          status = Q_HANDLED();
+          break;
+        case CHARGER_CV_STATE_CHARGING:
+          status = Q_HANDLED();
+          break;
+        case CHARGER_STATE_CV_COMPLETED:
+          status = Q_TRAN(&battery_manager_end_charge_state);
+          break;
+        case CHARGER_STATE_CURR_ERROR:
+          status = Q_TRAN(&battery_manager_alarm_state);
+          break;
+        case CHARGER_STATE_TEMP_ERROR:
+          status = Q_TRAN(&battery_manager_alarm_state);
+          break;
+        case CHARGER_STATE_VOLT_ERROR:
+          status = Q_TRAN(&battery_manager_alarm_state);
+          break;        
+        default:
+          status = Q_TRAN(&battery_manager_alarm_state);
+          break;
       }
       break;
     }
@@ -400,13 +450,30 @@ battery_manager_on_charge_state(BatteryManager_t* const me, QEvt const* const e)
  *        It will transition to the active state upon receiving the Q_EXIT_SIG event.
  */
 static QState
-battery_manager_trickle_state(BatteryManager_t* const me, QEvt const* const e) {
+battery_manager_end_charge_state(BatteryManager_t* const me, QEvt const* const e) {
   QState status;
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      bsp_led_set(LED_BLUE, LED_ON);
-      bsp_pwm_set_duty(current_to_pwm(TRICKLE_CHARGE_CURRENT));
+      bsp_digital_output_set(IO_CH_PWM_SYNC, IO_OFF);    
+      bsp_pwm_set_duty(current_to_pwm(0U));
+      bsp_pwm_deinit();
+      QTimeEvt_armX(&me->timerEvt, 1, 0);
+      me->LedIsOn = true;
+      status = Q_HANDLED();
+      break;
+    }
+
+    case TIMEOUT_SIG: {
+      if(me->LedIsOn) {
+        bsp_led_set(LED_GREEN, LED_OFF);
+        me->LedIsOn = false;
+      } else {
+        bsp_led_set(LED_GREEN, LED_ON);
+        me->LedIsOn = true;
+      }
+      
+      QTimeEvt_armX(&me->timerEvt, 1, 0);
       status = Q_HANDLED();
       break;
     }
@@ -463,8 +530,6 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
     case BUTTON_PRESSED_SIG: {
       if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) {
         if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
-          //bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
-          bsp_led_set(LED_BLUE, LED_OFF);
           status = Q_TRAN(&battery_manager_on_charge_state);
         }
       } else if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
@@ -514,7 +579,7 @@ battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+      //bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       bsp_digital_output_set(IO_CH_PWM_SYNC, IO_OFF);
       //pwm a zero
       bsp_led_set(LED_RED, LED_ON);
@@ -557,38 +622,55 @@ battery_manager_alarm_state(BatteryManager_t* const me, QEvt const* const e) {
  * @param charge_cur_mA Corrente di carica attuale in mA
  * @return true se la batteria e' stata completamente caricata, false altrimenti
  */
-static bool
-is_charge_finished(batteryInfo_t battInfo, uint32_t charge_curr_mA) {
-  int i, j;
+static uint8_t 
+charger_manager(batteryInfo_t battInfo, uint32_t max_charge_curr_mA) {
+  int idx_tbat, idx_ibat;
+  static uint32_t charge_curr_mA;
+
+  if(battInfo.vbat < (MIN_BATTERY_VOLTAGE_V * 1000)) {
+    return CHARGER_STATE_VOLT_ERROR;
+  }
+
+  /* Corrente massima erogabile dal SEPIC in mA, calcolata come P=V*I */
+  charge_curr_mA = MAX_SEPIC_POWER_W * 1000 / battInfo.vbat; 
+  if(charge_curr_mA > max_charge_curr_mA) {
+    charge_curr_mA = max_charge_curr_mA;
+  } 
 
   /* Trova indice fascia temperatura */
-  for (i = 0; i < 5; i++) {
-    if (battInfo.tbat >= temp_ranges[i][0] && battInfo.tbat < temp_ranges[i][1]) {
+  for (idx_tbat = 0; idx_tbat < 5; idx_tbat++) {
+    if( (battInfo.tbat >= temp_ranges[idx_tbat][0]) && (battInfo.tbat < temp_ranges[idx_tbat ][1]) ) {
       break;
     }
   }
-  if (i >= 5) {
-    return false;
+  /* se la temperatura è fuori dalle fasce definite, blocco la carica */
+  if (idx_tbat >= 5) {
+    return CHARGER_STATE_TEMP_ERROR;
   }
+
+  /* imposto corrente di uscita */
+  bsp_pwm_set_duty(current_to_pwm(charge_curr_mA));
 
   /* Trova indice fascia corrente (It rate) */
-  for (j = 0; j < 3; j++) {
-    if (charge_curr_mA >= current_ranges_mA[j][0] && charge_curr_mA <= current_ranges_mA[j][1]) {
+  for (idx_ibat = 0; idx_ibat < 3; idx_ibat++) {
+    if ( (charge_curr_mA >= current_ranges_mA[idx_ibat][0]) && (charge_curr_mA <= current_ranges_mA[idx_ibat][1]) ) {
       break;
     }
   }
-  if (j >= 3) {
-    return false;
+  if (idx_ibat >= 3) {
+    return CHARGER_STATE_CURR_ERROR;
   }
 
-  uint16_t termination_mV = termination_voltage_charge_mV[i][j];
+  uint16_t termination_mV = termination_voltage_charge_mV[idx_tbat][idx_ibat];
 
   /* Controllo terminazione */
-  if (battInfo.vbat >= termination_mV) {
-    return true;
+  if (battInfo.vbat <= termination_mV) {
+    return CHARGER_CC_STATE_CHARGING;
   }
-
-  return false;
+  else if((battInfo.vbat > termination_mV) && (charge_curr_mA > END_CHARGE_CURRENT_MA)) {
+    return CHARGER_CV_STATE_CHARGING;
+  }
+  return CHARGER_STATE_CV_COMPLETED;
 }
 
 /**

@@ -106,17 +106,17 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_mV = (adc_result.convValue * 3300U) / 65535U;
+  voltage_mV = (adc_result.convValue * 3270U) / 65535U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  current_mA = (adc_result.convValue * 3300U) / 65535U;
+  temp = (adc_result.convValue * 3270U) / 65535U;//current_mA
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  temp = (adc_result.convValue * 3300U) / 65535U;
+  current_mA = (adc_result.convValue * 3270U) / 65535U;
 
   //float dt = 1.0f;    // chiamata ogni secondo
 
@@ -126,6 +126,7 @@ bsp_adc_isr_handler(void) {
   evt->vbat = voltage_mV;
   evt->ibat = current_mA;
   evt->tbat = temp;
+  evt->soc = 110; // TODO: implementare stima SOC
   QF_PUBLISH(&evt->super, 0);
 
   SDK_ISR_EXIT_BARRIER;
@@ -176,7 +177,7 @@ bsp_adc_pin_init(void) {
   /* PORT2_3 (pin 9) is configured as ADC0_A2 */
   PORT_SetPinConfig(PORT2, 3U, &pin_config);
 
-  /* PORT2_12 (pin 11) is configured as ADC0_A5 */
+  /* PORT2_7 (pin 11) is configured as ADC0_A7 */
   PORT_SetPinConfig(PORT2, 7U, &pin_config);
 }
 
@@ -268,7 +269,18 @@ bsp_adc_timer_trigger_init(void) {
   /* Vogliamo un trigger ogni 1 secondo → period = 1000 */
   uint32_t period = 1000;
 
-  CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
+  //CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
+  
+  //Vogliamo 1 Hz = un MATCH ogni 1000 tick del timer (perché il timer ora è 1 kHz)
+  CTIMER_SetupMatch(CTIMER,
+                    CTIMER_MAT_OUT,
+                    &(ctimer_match_config_t){
+                        .matchValue = period,
+                        .enableCounterReset = true, /* Reset counter when match occurs */
+                        .enableInterrupt = false,   /* No interrupt needed for the match */
+                        .outControl = kCTIMER_Output_Toggle, /* Toggle output on match */
+                    });
+
   CTIMER_StartTimer(CTIMER);
 }
 

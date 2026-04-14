@@ -125,11 +125,11 @@ bsp_digital_output_init(void) {
   GPIO_PinInit(GPIO1, BAT_SW_EN_PIN, &out_cfg);
 
   /* --------------------- CH_PWM_SYNC (P1_29) --------------------- */
-  const port_pin_config_t port1_29_cfg = {
+  const port_pin_config_t port1_0_cfg = {
     kPORT_PullDown,           kPORT_LowPullResistor,  kPORT_FastSlewRate,        kPORT_PassiveFilterDisable,
     kPORT_OpenDrainDisable,   kPORT_LowDriveStrength, kPORT_NormalDriveStrength, kPORT_MuxAsGpio,
     kPORT_InputBufferDisable, kPORT_InputNormal,      kPORT_UnlockRegister};
-  PORT_SetPinConfig(PORT1, CH_PWM_SYNC_PIN, &port1_29_cfg);
+  PORT_SetPinConfig(PORT1, CH_PWM_SYNC_PIN, &port1_0_cfg);
   GPIO_PinInit(GPIO1, CH_PWM_SYNC_PIN, &out_cfg);
 }
 
