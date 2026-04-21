@@ -107,7 +107,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_mV = (adc_result.convValue * 3270U) / 65535U;
+  voltage_mV = (adc_result.convValue * 3330U) / 65535U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
@@ -117,7 +117,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  current_mA = (adc_result.convValue * 3270U) / 65535U;
+  current_mA = (adc_result.convValue * 3330U) / 65535U;
 
   //float dt = 1.0f;    // chiamata ogni secondo
 
@@ -268,7 +268,7 @@ bsp_adc_timer_trigger_init(void) {
   timerClock = CLOCK_GetCTimerClkFreq(1U) / (config.prescale + 1);
 
   /* Vogliamo un trigger ogni 1 secondo → period = 1000 */
-  uint32_t period = 1000;
+  uint32_t period = 1000U;//500
 
   //CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
   
