@@ -16,6 +16,7 @@ file(GLOB SEGGER_RTT_SOURCE_FILES_LIST
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_led.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_digital_output.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_tick.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_ntc_battery.c"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

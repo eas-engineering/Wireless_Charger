@@ -34,6 +34,7 @@
 #include "fsl_port.h"
 #include "project_settings.h"
 #include "qpc.h"
+#include "bsp_ntc_battery.h"
 
 /*****************************************************************************
 * Module Preprocessor Constants
@@ -111,7 +112,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  temp = (adc_result.convValue * 3270U) / 65535U;//current_mA
+  temp = (uint32_t)bsp_ntc_battery_get_temperature(adc_result.convValue, 65535)*100U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 

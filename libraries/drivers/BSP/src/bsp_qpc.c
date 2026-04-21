@@ -30,6 +30,7 @@
 #include "bsp_qpc_spy.h"
 #include "bsp_tick.h"
 #include "bsp_timer.h"
+#include "bsp_led.h"
 #include "project_settings.h"
 #include "qpc.h"
 
@@ -176,10 +177,18 @@ Q_onError(char const* module, int_t const id) {
   */
 void
 SysTick_Handler(void) {
+  //static bool led_on = false;
   QK_ISR_ENTRY(); // inform QK about entering an ISR
 
   QTIMEEVT_TICK_X(0U, &l_SysTick_Handler); // time events at rate 0
 
+  // if(led_on) {
+  //   bsp_led_set(LED_BLUE, LED_OFF);
+  //   led_on = false;
+  // } else {
+  //   bsp_led_set(LED_BLUE, LED_ON);
+  //   led_on = true;
+  // }
   bsp_tick_inc();
   bsp_timer_tick();
 

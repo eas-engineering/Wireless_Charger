@@ -79,7 +79,7 @@ static void bsp_clock_set_12MHz(void);
  */
 void
 bsp_clock_init(void) {
-  bsp_clock_set_64MHz();
+  bsp_clock_set_48MHz();//64
 }
 
 /*******************************************************************************

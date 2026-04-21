@@ -31,6 +31,7 @@
 #include "bsp_adc.h"
 #include "bsp_clock.h"
 #include "bsp_pwm.h"
+#include "bsp_led.h"
 #include "bsp_i2c.h"
 #include "bsp_stwlc_driver.h"
 #include "project_settings.h"
@@ -72,8 +73,7 @@ static QSubscrList subscrSto[MAX_PUB_SIG];
 int
 main(void) {
 
-  bsp_clock_init();
-
+  bsp_clock_init(); 
   QF_init();
 
   // initialize the QS software tracing...
@@ -103,7 +103,7 @@ main(void) {
 
   // initialize publish-subscribe
   QActive_psInit(subscrSto, Q_DIM(subscrSto));
-
+  //bsp_led_init();//debug da togliere
   /* Initialize other modules */
   battery_manager_init();
 
