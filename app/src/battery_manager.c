@@ -334,7 +334,7 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
 
     case ADC_BATTERY_INFO_SAMPLE_SIG: {    
       batteryInfo_process_adc(me, Q_EVT_CAST(AdcInfoEvt));
-      static QEvt const evt = QEVT_INITIALIZER(BATTERY_ACTION_SIG);
+      static QEvt const evt = QEVT_INITIALIZER(ADC_DATA_READY_SIG);
       QACTIVE_POST(AO_BatteryManager, &evt, 0U);
       status = Q_HANDLED();
       break;
@@ -401,7 +401,7 @@ battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       if(me->moving_average_initialized) {
         me->half_vcc_curr = me->battInfo.ibat_adc - OFFSET_CURR_SENSOR;
         status = Q_TRAN(&battery_manager_soft_start_state);
@@ -493,7 +493,7 @@ battery_manager_soft_start_state(BatteryManager_t* const me, QEvt const* const e
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       /* Verifica se le condizioni di soft-start sono soddisfatte */
       bool vbat_valid = me->battInfo.vbat_mm > 1100U;  /* > 11V */
       bool tbat_valid = me->battInfo.tbat_mm < MAX_BATTERY_TEMPERATURE_mC;
@@ -567,7 +567,7 @@ battery_manager_on_cc_charge_state(BatteryManager_t* const me, QEvt const* const
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       status = charger_cc_manager(me, me->battInfo, 500U);
       break;
     }
@@ -626,7 +626,7 @@ battery_manager_on_cv_charge_state(BatteryManager_t* const me, QEvt const* const
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       status = charger_cv_manager(me, me->battInfo, 500U);
       break;
     }
@@ -752,7 +752,7 @@ battery_manager_high_level_batt_state(BatteryManager_t* const me, QEvt const* co
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       /* Determine required voltage threshold based on current draw */
       uint16_t required_vbat = (me->battInfo.ibat_mm < 250U) ? (14U * 100U) : (13 * 100U);//14
 
@@ -789,7 +789,7 @@ battery_manager_low_level_batt_state(BatteryManager_t* const me, QEvt const* con
       break;
     }
 
-    case BATTERY_ACTION_SIG: {
+    case ADC_DATA_READY_SIG: {
       if (me->battInfo.vbat_mm < (13U * 100U) || me->battInfo.tbat_mm > (MAX_BATTERY_TEMPERATURE_mC)) {
         status = Q_TRAN(&battery_manager_alarm_state);
         break;      
