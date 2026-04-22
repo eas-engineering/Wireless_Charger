@@ -60,14 +60,14 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 #define MAX_BATTERY_VOLTAGE_V      18
 
 #define VOLTAGE_RATIO              1000U / 1525U
-#define CURRENT_RATIO              12500U/* (1/80mV)*1000 fattore di conversione sensore in mA */
-#define OFFSET_CURR_SENSOR         2U /*La corrente iniziale non è 0, ma 9mA.. ne tengo conto*/
+#define CURRENT_RATIO              12500U /* (1/80mV)*1000 fattore di conversione sensore in mA */
+#define OFFSET_CURR_SENSOR         2U     /*La corrente iniziale non è 0, ma 9mA.. ne tengo conto*/
 
 #define SEPIC_EFF                  26U /* Efficienza del convertitore SEPIC, da misurare sperimentalmente */
 #define MAX_WLC_POWER_W       15U  /* Potenza massima erogabile dal caricatore wireless, da misurare sperimentalmente */
 #define END_CHARGE_CURRENT_MA 150U /* Corrente di fine carica, da misurare sperimentalmente */
 #define MAX_SEPIC_POWER_W     11U  /* Potenza massima erogabile dal convertitore SEPIC, da misurare sperimentalmente */
-#define VCC_HALF_MV           1650U//1636U
+#define VCC_HALF_MV           1650U //1636U
 #define VCC_MV                3270U
 #define EEPROM_SAVE_TIME_MS   60 * 1000 * 5
 #define SECOND_N_TICKS        1000U //770U//385U
@@ -188,7 +188,7 @@ static void batteryInfo_update_moving_average(batteryInfo_t* const battInfo, Bat
 static QState charger_cc_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t max_charge_curr_mA);
 static QState charger_cv_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t max_charge_curr_mA);
 static uint32_t current_to_pwm(uint32_t curr_mA);
-static void batteryInfo_process_adc(BatteryManager_t *me, AdcInfoEvt const *evt);
+static void batteryInfo_process_adc(BatteryManager_t* me, AdcInfoEvt const* evt);
 
 /*****************************************************************************
 * Module Variable Definitions
@@ -337,7 +337,7 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
       break;
     }
 
-    case ADC_BATTERY_INFO_SAMPLE_SIG: {    
+    case ADC_BATTERY_INFO_SAMPLE_SIG: {
       batteryInfo_process_adc(me, Q_EVT_CAST(AdcInfoEvt));
       static QEvt const evt = QEVT_INITIALIZER(ADC_DATA_READY_SIG);
       QACTIVE_POST(AO_BatteryManager, &evt, 0U);
@@ -400,19 +400,19 @@ battery_manager_startup_state(BatteryManager_t* const me, QEvt const* const e) {
           bsp_digital_output_set(IO_BAT_SW_EN, IO_ON);
           status = Q_TRAN(&battery_manager_on_state);
           break;
-        } 
-      }     
+        }
+      }
       status = Q_HANDLED();
       break;
     }
 
     case ADC_DATA_READY_SIG: {
-      if(me->moving_average_initialized) {
+      if (me->moving_average_initialized) {
         me->half_vcc_curr = me->battInfo.ibat_adc - OFFSET_CURR_SENSOR;
         status = Q_TRAN(&battery_manager_soft_start_state);
         break;
       }
-      status = Q_HANDLED(); 
+      status = Q_HANDLED();
       break;
     }
 
@@ -500,7 +500,7 @@ battery_manager_soft_start_state(BatteryManager_t* const me, QEvt const* const e
 
     case ADC_DATA_READY_SIG: {
       /* Verifica se le condizioni di soft-start sono soddisfatte */
-      bool vbat_valid = me->battInfo.vbat_mm > 1100U;  /* > 11V */
+      bool vbat_valid = me->battInfo.vbat_mm > 1100U; /* > 11V */
       bool tbat_valid = me->battInfo.tbat_mm < MAX_BATTERY_TEMPERATURE_mC;
 
       if (!vbat_valid || !tbat_valid) {
@@ -516,7 +516,7 @@ battery_manager_soft_start_state(BatteryManager_t* const me, QEvt const* const e
           status = Q_HANDLED();
         } else {
           /* Rampa completata: verifica se il SEPIC si è attivato */
-          uint16_t current_threshold_mA = 100U;  /* Corrente minima per attivazione SEPIC 150 */
+          uint16_t current_threshold_mA = 100U; /* Corrente minima per attivazione SEPIC 150 */
 
           if (me->battInfo.ibat_mm < current_threshold_mA) {
             /* Corrente insufficiente → batteria è carica, SEPIC non attivo */
@@ -764,7 +764,7 @@ battery_manager_high_level_batt_state(BatteryManager_t* const me, QEvt const* co
 
     case ADC_DATA_READY_SIG: {
       /* Determine required voltage threshold based on current draw */
-      uint16_t required_vbat = (me->battInfo.ibat_mm < 250U) ? (14U * 100U) : (13 * 100U);//14
+      uint16_t required_vbat = (me->battInfo.ibat_mm < 250U) ? (14U * 100U) : (13 * 100U); //14
 
       if (me->battInfo.vbat_mm > required_vbat && me->battInfo.tbat_mm < (MAX_BATTERY_TEMPERATURE_mC)) {
         status = Q_HANDLED();
@@ -802,9 +802,9 @@ battery_manager_low_level_batt_state(BatteryManager_t* const me, QEvt const* con
     case ADC_DATA_READY_SIG: {
       if (me->battInfo.vbat_mm < (13U * 100U) || me->battInfo.tbat_mm > (MAX_BATTERY_TEMPERATURE_mC)) {
         status = Q_TRAN(&battery_manager_alarm_state);
-        break;      
+        break;
       }
-      status = Q_HANDLED(); 
+      status = Q_HANDLED();
       break;
     }
 
@@ -883,10 +883,10 @@ charger_cc_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t 
     return Q_TRAN(&battery_manager_alarm_state);
   }
   /* Controllo corrente minima e massima batteria */
-  if(me->battInfo.ibat_mm < 150U || me->battInfo.ibat_mm > 750U) {
+  if (me->battInfo.ibat_mm < 150U || me->battInfo.ibat_mm > 750U) {
     return Q_TRAN(&battery_manager_alarm_state);
   }
-    /* Temperatura fuori range → allarme */
+  /* Temperatura fuori range → allarme */
   if (battInfo.tbat_mm >= 4500U) {
     return Q_TRAN(&battery_manager_alarm_state);
   }
@@ -927,8 +927,7 @@ charger_cc_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t 
 
   uint16_t termination_mV = termination_voltage_charge_mV[idx_tbat][idx_ibat];
   me->termination_voltage_mV = termination_mV;
-  uint16_t vbat_mm_toll = battInfo.vbat_mm * 101
-                              / 100; // tensione di fine carica per cella, da visualizzare all'utente
+  uint16_t vbat_mm_toll = battInfo.vbat_mm * 101 / 100; // tensione di fine carica per cella, da visualizzare all'utente
   /* Stato CC */
   if (vbat_mm_toll <= termination_mV) {
     return Q_HANDLED();
@@ -946,10 +945,10 @@ charger_cv_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t 
     return Q_TRAN(&battery_manager_alarm_state);
   }
   /* Controllo corrente minima e massima batteria */
-  if(me->battInfo.ibat_mm < 100U || me->battInfo.ibat_mm > 750U) {
+  if (me->battInfo.ibat_mm < 100U || me->battInfo.ibat_mm > 750U) {
     return Q_TRAN(&battery_manager_alarm_state);
   }
-    /* Temperatura fuori range → allarme */
+  /* Temperatura fuori range → allarme */
   if (battInfo.tbat_mm >= 4500U) {
     return Q_TRAN(&battery_manager_alarm_state);
   }
@@ -993,12 +992,13 @@ batteryInfo_update_moving_average(batteryInfo_t* const battInfo, BatteryManager_
     battInfo->tbat_mm = battInfo->tbat_raw;
     battInfo->half_vcc_curr_mm = battInfo->ibat_adc;
   } else {
-    if(me->moving_average_initialized == false) {
+    if (me->moving_average_initialized == false) {
       me->moving_average_initialized = true;
     }
     battInfo->ibat_mm = (uint16_t)((battInfo->ibat_sum + (N_MOVING_AVERAGE_SAMPLES - 1U)) / N_MOVING_AVERAGE_SAMPLES);
     battInfo->vbat_mm = (uint16_t)((battInfo->vbat_sum + (N_MOVING_AVERAGE_SAMPLES - 1U)) / N_MOVING_AVERAGE_SAMPLES);
-    battInfo->half_vcc_curr_mm = (uint16_t)((battInfo->ibat_mV_sum + (N_MOVING_AVERAGE_SAMPLES - 1U)) / N_MOVING_AVERAGE_SAMPLES);
+    battInfo->half_vcc_curr_mm = (uint16_t)((battInfo->ibat_mV_sum + (N_MOVING_AVERAGE_SAMPLES - 1U))
+                                            / N_MOVING_AVERAGE_SAMPLES);
     battInfo->tbat_mm = (uint16_t)((battInfo->tbat_sum + (N_MOVING_AVERAGE_SAMPLES - 1U)) / N_MOVING_AVERAGE_SAMPLES);
   }
 }
@@ -1038,33 +1038,30 @@ current_to_pwm(uint32_t curr_mA) {
   return pwm_value;
 }
 
-static void batteryInfo_process_adc(BatteryManager_t *me, AdcInfoEvt const *evt)
-{
-    uint32_t numerator_curr;
-    uint32_t denominator_curr;
+static void
+batteryInfo_process_adc(BatteryManager_t* me, AdcInfoEvt const* evt) {
+  uint32_t numerator_curr;
+  uint32_t denominator_curr;
 
-    /* SOC e valori ADC grezzi */
-    me->battInfo.soc       = evt->soc;
-    me->battInfo.ibat_adc  = evt->ibat;
-    me->battInfo.tbat_raw  = evt->tbat;
+  /* SOC e valori ADC grezzi */
+  me->battInfo.soc = evt->soc;
+  me->battInfo.ibat_adc = evt->ibat;
+  me->battInfo.tbat_raw = evt->tbat;
 
-    /* Calcolo corrente batteria */
-    numerator_curr =
-        (((me->half_vcc_curr > evt->ibat)
-            ? (me->half_vcc_curr - evt->ibat)
-            : (evt->ibat - me->half_vcc_curr))
-         * CURRENT_RATIO);
+  /* Calcolo corrente batteria */
+  numerator_curr = (((me->half_vcc_curr > evt->ibat) ? (me->half_vcc_curr - evt->ibat)
+                                                     : (evt->ibat - me->half_vcc_curr))
+                    * CURRENT_RATIO);
 
-    denominator_curr = me->half_vcc_curr * 2U;
+  denominator_curr = me->half_vcc_curr * 2U;
 
-    /* Arrotondamento per eccesso */
-    me->battInfo.ibat_raw =
-        (uint16_t)((numerator_curr + (denominator_curr - 1U)) / denominator_curr);
+  /* Arrotondamento per eccesso */
+  me->battInfo.ibat_raw = (uint16_t)((numerator_curr + (denominator_curr - 1U)) / denominator_curr);
 
-    /* Tensione batteria */
-    me->battInfo.vbat_raw = evt->vbat * VOLTAGE_RATIO;
-    me->battInfo.vbat_adc = (evt->vbat * 65535U) / 3330U;
+  /* Tensione batteria */
+  me->battInfo.vbat_raw = evt->vbat * VOLTAGE_RATIO;
+  me->battInfo.vbat_adc = (evt->vbat * 65535U) / 3330U;
 
-    /* Media mobile */
-    batteryInfo_update_moving_average(&me->battInfo, me);
+  /* Media mobile */
+  batteryInfo_update_moving_average(&me->battInfo, me);
 }

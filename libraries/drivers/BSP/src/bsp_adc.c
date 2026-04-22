@@ -27,6 +27,8 @@
 * Includes
 ******************************************************************************/
 #include "bsp_adc.h"
+#include "bsp_led.h"
+#include "bsp_ntc_battery.h"
 #include "fsl_common.h"
 #include "fsl_ctimer.h"
 #include "fsl_inputmux.h"
@@ -34,8 +36,6 @@
 #include "fsl_port.h"
 #include "project_settings.h"
 #include "qpc.h"
-#include "bsp_ntc_battery.h"
-#include "bsp_led.h"
 /*****************************************************************************
 * Module Preprocessor Constants
 ******************************************************************************/
@@ -112,7 +112,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  temp = (uint32_t)bsp_ntc_battery_get_temperature(adc_result.convValue, 65535)*100U;
+  temp = (uint32_t)bsp_ntc_battery_get_temperature(adc_result.convValue, 65535) * 100U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
@@ -123,7 +123,7 @@ bsp_adc_isr_handler(void) {
 
   //uint32_t soc = soc_estimate(vbat, ibat, tbat, dt);
 
-  AdcInfoEvt *evt = Q_NEW(AdcInfoEvt, ADC_BATTERY_INFO_SAMPLE_SIG);
+  AdcInfoEvt* evt = Q_NEW(AdcInfoEvt, ADC_BATTERY_INFO_SAMPLE_SIG);
   evt->vbat = voltage_mV;
   evt->ibat = current_mA;
   evt->tbat = temp;
@@ -202,7 +202,7 @@ bsp_adc_peripheral_init(void) {
   CLOCK_AttachClk(kFRO12M_to_ADC0);
 
   /* ADC0 peripheral is released from reset */
-  RESET_ReleasePeripheralReset(kADC0_RST_SHIFT_RSTn);  
+  RESET_ReleasePeripheralReset(kADC0_RST_SHIFT_RSTn);
 
   LPADC_GetDefaultConfig(&adc_config);
   adc_config.enableAnalogPreliminary = true;
@@ -258,9 +258,9 @@ bsp_adc_timer_trigger_init(void) {
   CLOCK_AttachClk(kFRO_HF_to_CTIMER2);
 
   CTIMER_GetDefaultConfig(&config);
-  
+
   /* Imposto prescaler per avere 1000 Hz */
-  config.prescale = 47999;   // (48MHz / 48000 = 1000 Hz)
+  config.prescale = 47999; // (48MHz / 48000 = 1000 Hz)
 
   CTIMER_Init(CTIMER, &config);
 
@@ -268,15 +268,14 @@ bsp_adc_timer_trigger_init(void) {
   uint32_t period = 249U;
 
   //CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
-  
+
   //Vogliamo 1 Hz = un MATCH ogni 1000 tick del timer (perché il timer ora è 1 kHz)
-  CTIMER_SetupMatch(CTIMER,
-                    CTIMER_MAT_OUT,
+  CTIMER_SetupMatch(CTIMER, CTIMER_MAT_OUT,
                     &(ctimer_match_config_t){
-                        .matchValue = period,
-                        .enableCounterReset = true, /* Reset counter when match occurs */
-                        .enableInterrupt = false,   /* No interrupt needed for the match */
-                        .outControl = kCTIMER_Output_Toggle, /* Toggle output on match */
+                      .matchValue = period,
+                      .enableCounterReset = true,          /* Reset counter when match occurs */
+                      .enableInterrupt = false,            /* No interrupt needed for the match */
+                      .outControl = kCTIMER_Output_Toggle, /* Toggle output on match */
                     });
 
   CTIMER_StartTimer(CTIMER);
