@@ -35,7 +35,7 @@
 #include "project_settings.h"
 #include "qpc.h"
 #include "bsp_ntc_battery.h"
-
+#include "bsp_led.h"
 /*****************************************************************************
 * Module Preprocessor Constants
 ******************************************************************************/
@@ -253,7 +253,6 @@ static void
 bsp_adc_timer_trigger_init(void) {
 
   ctimer_config_t config;
-  uint32_t timerClock;
 
   CLOCK_SetClockDiv(kCLOCK_DivCTIMER2, 1u);
   CLOCK_AttachClk(kFRO_HF_to_CTIMER2);
@@ -265,10 +264,8 @@ bsp_adc_timer_trigger_init(void) {
 
   CTIMER_Init(CTIMER, &config);
 
-  timerClock = CLOCK_GetCTimerClkFreq(1U) / (config.prescale + 1);
-
-  /* Vogliamo un trigger ogni 1 secondo → period = 1000 */
-  uint32_t period = 1000U;//500
+  /* Vogliamo un trigger ogni 1 secondo → period = 499 */
+  uint32_t period = 249U;
 
   //CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);
   

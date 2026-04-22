@@ -135,7 +135,7 @@ bsp_led_init(void) {
  * This example sets the state of the LED with the color RED to LED_ON.
  */
 void
-bsp_led_set(led_color_t color, led_state_t state) {
+bsp_single_led_set(led_color_t color, led_state_t state) {
   switch (color) {
     case LED_RED:
       if (state == LED_ON) {
@@ -157,6 +157,42 @@ bsp_led_set(led_color_t color, led_state_t state) {
       } else {
         BLUE_DRV_CLR();
       }
+      break;
+    default: break;
+  }
+}
+void
+bsp_color_rgb_set(rgb_color_t color) {
+  switch (color) {
+    case RED:
+        RED_DRV_SET();
+        GREEN_DRV_CLR();
+        BLUE_DRV_CLR();
+      break;
+    case GREEN:
+        RED_DRV_CLR();
+        GREEN_DRV_SET();
+        BLUE_DRV_CLR();
+      break;
+    case BLUE:
+        RED_DRV_CLR();
+        GREEN_DRV_CLR();
+        BLUE_DRV_SET();
+      break;
+    case WHITE:
+        RED_DRV_SET();
+        GREEN_DRV_SET();
+        BLUE_DRV_SET();
+      break;
+    case YELLOW:
+      RED_DRV_SET();
+      GREEN_DRV_SET();
+      BLUE_DRV_CLR();
+    break;
+    case OFF:
+        RED_DRV_CLR();
+        GREEN_DRV_CLR();
+        BLUE_DRV_CLR();
       break;
     default: break;
   }

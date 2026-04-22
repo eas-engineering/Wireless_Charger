@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 /**
@@ -55,16 +55,11 @@ extern "C"{
 * Module Typedefs
 ******************************************************************************/
 
-typedef enum {
-  LED_OFF = 0,
-  LED_ON = 1
-} led_state_t;
+typedef enum { LED_OFF = 0, LED_ON = 1 } led_state_t;
 
-typedef enum {
-  LED_RED = 0,
-  LED_GREEN = 1,
-  LED_BLUE = 2
-} led_color_t;
+typedef enum { LED_RED = 0, LED_GREEN = 1, LED_BLUE = 2 } led_color_t;
+
+typedef enum { RED = 0, GREEN = 1, BLUE = 2, WHITE = 3, YELLOW = 4, OFF = 5 } rgb_color_t;
 
 /*****************************************************************************
 * Module Variable Definitions
@@ -76,7 +71,9 @@ typedef enum {
 
 void bsp_led_init(void);
 
-void bsp_led_set(led_color_t color, led_state_t state);
+void bsp_single_led_set(led_color_t color, led_state_t state);
+
+void bsp_color_rgb_set(rgb_color_t color);
 
 /**
  * }
@@ -89,4 +86,3 @@ void bsp_led_set(led_color_t color, led_state_t state);
 #endif /*BSP_LED_H_*/
 
 /*** End of File *************************************************************/
-
