@@ -58,7 +58,6 @@ enum GlobalSignals {
   MAX_PUB_SIG, // the last published signal
 
   ALARM_SIG,
-  DELAY_VBAT_TO_VCH_SIG,
   ADC_DATA_READY_SIG,
   TIMEOUT_SIG,
 
