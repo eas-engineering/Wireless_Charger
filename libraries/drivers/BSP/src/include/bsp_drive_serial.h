@@ -1,41 +1,42 @@
 /*****************************************************************************
-* Filename              :   global_signals.h
+* Filename              :   bsp_serial.h
 * Author                :   Giulio Dalla Vecchia
-* Origin Date           :   27 August 2024
+* Origin Date           :   25 September 2024
 *
 * Copyright (c) 2024 EAS SPA. All rights reserved.
 *
 ******************************************************************************/
 
-/** @file global_signals.h
+/** @file bsp_serial.h
  *  @brief This module handles the doxygen comments.
  *
  *  This is the header file for the definition of doxygen comments function.
  */
 
-#ifndef GLOBAL_SIGNALS_H_
-#define GLOBAL_SIGNALS_H_
+#ifndef BSP_SERIAL_H_
+#define BSP_SERIAL_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include "qpc.h"
+#include "global_signals.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * \defgroup        GlobalSignals
- * \brief           This groups rappresents the list of the signals used by
- *                  the system
+ * \defgroup        Template
+ * \brief           Template functions group
  * \{
  */
 
 /*****************************************************************************
 * Module Preprocessor Constants
 ******************************************************************************/
+
+#define BSP_DRIVE_SERIAL_BUFF_LEN (32U)
 
 /*****************************************************************************
 * Module Preprocessor Macros
@@ -45,47 +46,34 @@ extern "C" {
 * Module Typedefs
 ******************************************************************************/
 
+/* Enumerations for serial interface signals */
+enum {
+  SERIAL_SEND_SIG = DRIVER_SERIAL_GROUP, /* Signal used when you want to send data */
+  SERIAL_RECEIVE_SIG,                    /* Signal used when data has been received */
+  SERIAL_RX_CMPL_SIG,                    /* Signal used when the reception is complete */
+  SERIAL_TX_CMPL_SIG,                    /* Signal used when the USART transmission is complete */
+};
+
+/**
+ * @brief Struct that rappresents a USART event
+ * 
+ */
+typedef struct {
+  QEvt super;
+  uint8_t pui8_data[BSP_DRIVE_SERIAL_BUFF_LEN];
+  uint32_t len;
+} DriveSerialEvt_t;
+
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
-
-enum GlobalSignals {
-  DUMMY_SIG = Q_USER_SIG,
-  ADC_BATTERY_INFO_SAMPLE_SIG,
-  EEPROM_WRITE_SIG,
-  INITIALIZE_SIG,
-  BUTTON_PRESSED_SIG,
-  MAX_PUB_SIG, // the last published signal
-
-  ALARM_SIG,
-  ADC_DATA_READY_SIG,
-  MODBUS_BATTERY_INFO_UPDATE_SIG,
-  TIMEOUT_SIG,
-
-  DRIVER_SERIAL_GROUP,
-  DRIVER_SERIAL_GROUP_END = DRIVER_SERIAL_GROUP + 20,
-  
-  MODBUS_SERVER_GROUP,
-  MODBUS_SERVER_GROUP_END = MODBUS_SERVER_GROUP + 20,
-
-  BSP_I2C_GROUP,
-  BSP_I2C_GROUP_END = BSP_I2C_GROUP + 20U,
-
-  MAX_SIG // the last signal
-};
 
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
 
-#ifdef Q_SPY
-static inline void
-produce_sig_dict(void) {
-  QS_SIG_DICTIONARY(DUMMY_SIG, (void*)0);
-  QS_SIG_DICTIONARY(TIMEOUT_SIG, (void*)0);
-}
-#endif // def Q_SPY
-
+QHsm* bsp_drive_serial_init(QActive* const container);
+void bsp_drive_serial_isr_rx_handler(void);
 /**
  * }
  */
@@ -94,6 +82,6 @@ produce_sig_dict(void) {
 } // extern "C"
 #endif
 
-#endif /*GLOBAL_SIGNALS_H_*/
+#endif /*BSP_SERIAL_H_*/
 
 /*** End of File *************************************************************/

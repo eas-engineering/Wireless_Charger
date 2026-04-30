@@ -79,7 +79,7 @@ static void bsp_clock_set_12MHz(void);
  */
 void
 bsp_clock_init(void) {
-  bsp_clock_set_48MHz();//64
+  bsp_clock_set_48MHz();
 }
 
 /*******************************************************************************
@@ -282,53 +282,81 @@ settings:
  ******************************************************************************/
 static void
 bsp_clock_set_48MHz(void) {
-  uint32_t coreFreq;
-  spc_active_mode_core_ldo_option_t ldoOption;
-  spc_sram_voltage_config_t sramOption;
+    uint32_t coreFreq;
+    spc_active_mode_core_ldo_option_t ldoOption;
+    spc_sram_voltage_config_t sramOption;
 
-  /* Get the CPU Core frequency */
-  coreFreq = CLOCK_GetCoreSysClkFreq();
+    /* Get the CPU Core frequency */
+    coreFreq = CLOCK_GetCoreSysClkFreq();
 
-  /* The flow of increasing voltage and frequency */
-  if (coreFreq <= BOARD_BOOTCLOCKFRO48M_CORE_CLOCK) {
-    /* Set the LDO_CORE VDD regulator level */
-    ldoOption.CoreLDOVoltage = kSPC_CoreLDO_MidDriveVoltage;
-    ldoOption.CoreLDODriveStrength = kSPC_CoreLDO_NormalDriveStrength;
-    (void)SPC_SetActiveModeCoreLDORegulatorConfig(SPC0, &ldoOption);
-    /* Configure Flash to support different voltage level and frequency */
-    FMU0->FCTRL = (FMU0->FCTRL & ~((uint32_t)FMU_FCTRL_RWSC_MASK)) | (FMU_FCTRL_RWSC(0x0U));
-    /* Specifies the operating voltage for the SRAM's read/write timing margin */
-    sramOption.operateVoltage = kSPC_sramOperateAt1P0V;
-    sramOption.requestVoltageUpdate = true;
-    (void)SPC_SetSRAMOperateVoltage(SPC0, &sramOption);
+    /* The flow of increasing voltage and frequency */
+    if (coreFreq <= BOARD_BOOTCLOCKFRO48M_CORE_CLOCK) {
+        /* Set the LDO_CORE VDD regulator level */
+        ldoOption.CoreLDOVoltage = kSPC_CoreLDO_MidDriveVoltage;
+        ldoOption.CoreLDODriveStrength = kSPC_CoreLDO_NormalDriveStrength;
+        (void)SPC_SetActiveModeCoreLDORegulatorConfig(SPC0, &ldoOption);
+        /* Configure Flash to support different voltage level and frequency */
+        FMU0->FCTRL = (FMU0->FCTRL & ~((uint32_t)FMU_FCTRL_RWSC_MASK)) | (FMU_FCTRL_RWSC(0x1U));
+        /* Specifies the operating voltage for the SRAM's read/write timing margin */
+        sramOption.operateVoltage = kSPC_sramOperateAt1P0V;
+        sramOption.requestVoltageUpdate =  true;
+        (void)SPC_SetSRAMOperateVoltage(SPC0, &sramOption);
+    }
+
+
+    /*!< Set up system dividers */
+    CLOCK_SetClockDiv(kCLOCK_DivAHBCLK, 1U);               /* !< Set AHBCLKDIV divider to value 1 */
+    CLOCK_SetClockDiv(kCLOCK_DivFRO_HF_DIV, 1U);           /* !< Set FROHFDIV divider to value 1 */
+
+    CLOCK_SetupFROHFClocking(48000000U);                   /*!< Enable FRO HF(48MHz) output */
+
+    CLOCK_SetupFRO12MClocking();                           /*!< Setup FRO12M clock */
+
+    CLOCK_AttachClk(kFRO_HF_to_MAIN_CLK);                  /* !< Switch MAIN_CLK to FRO_HF */
+
+    /* The flow of decreasing voltage and frequency */
+    if (coreFreq > BOARD_BOOTCLOCKFRO48M_CORE_CLOCK) {
+        /* Configure Flash to support different voltage level and frequency */
+        FMU0->FCTRL = (FMU0->FCTRL & ~((uint32_t)FMU_FCTRL_RWSC_MASK)) | (FMU_FCTRL_RWSC(0x1U));
+        /* Specifies the operating voltage for the SRAM's read/write timing margin */
+        sramOption.operateVoltage = kSPC_sramOperateAt1P0V;
+        sramOption.requestVoltageUpdate =  true;
+        (void)SPC_SetSRAMOperateVoltage(SPC0, &sramOption);
+        /* Set the LDO_CORE VDD regulator level */
+        ldoOption.CoreLDOVoltage = kSPC_CoreLDO_MidDriveVoltage;
+        ldoOption.CoreLDODriveStrength = kSPC_CoreLDO_NormalDriveStrength;
+        (void)SPC_SetActiveModeCoreLDORegulatorConfig(SPC0, &ldoOption);
+    }
+
+    //CLOCK_EnableClock(kCLOCK_GateLPUART1);
+    /*!< Set up clock selectors - Attach clocks to the peripheries */
+    CLOCK_AttachClk(kCPU_CLK_to_TRACE);                    /* !< Switch TRACE to CPU_CLK */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_LPSPI0);                /* !< Switch LPSPI0 to FRO_HF_DIV */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_LPSPI1);                /* !< Switch LPSPI1 to FRO_HF_DIV */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_LPI2C0);                /* !< Switch LPI2C0 to FRO_HF_DIV */
+    //CLOCK_AttachClk(kFRO_HF_DIV_to_LPUART0);               /* !< Switch LPUART0 to FRO_HF_DIV */
+    //CLOCK_AttachClk(kFRO12M_to_LPUART1);                   /* !< Switch LPUART1 to FRO12M */
+    //CLOCK_AttachClk(kFRO_HF_DIV_to_LPUART2);               /* !< Switch LPUART2 to FRO_HF_DIV */
+    //CLOCK_AttachClk(kFRO_HF_DIV_to_LPTMR0);                /* !< Switch LPTMR0 to FRO_HF_DIV */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_I3C0FCLK);              /* !< Switch I3C0FCLK to FRO_HF_DIV */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_CMP0);                  /* !< Switch CMP0 to FRO_HF_DIV */
+    CLOCK_AttachClk(kFRO_HF_DIV_to_CMP1);                  /* !< Switch CMP1 to FRO_HF_DIV */
+
+    /* Configure FREQME clock */
+    //CLOCK_EnableClock(kCLOCK_InputMux);
+    
+    //RESET_ReleasePeripheralReset(kINPUTMUX0_RST_SHIFT_RSTn);
+    //RESET_PeripheralReset(kLPUART1_RST_SHIFT_RSTn);
+    //INPUTMUX0->FREQMEAS_REF = INPUTMUX_FREQMEAS_REF_INP(2);
+    //INPUTMUX0->FREQMEAS_TAR = INPUTMUX_FREQMEAS_TAR_INP(2);
+
+    /*!< Set up dividers */
+    CLOCK_SetClockDiv(kCLOCK_DivTRACE, 1U);                /* !< Set TRACECLKDIV divider to value 1 */
+    CLOCK_SetClockDiv(kCLOCK_DivWWDT0, 1U);                /* !< Set WWDT0CLKDIV divider to value 1 */
+
+    /* Set SystemCoreClock variable */
+    SystemCoreClock = BOARD_BOOTCLOCKFRO48M_CORE_CLOCK;
   }
-
-  CLOCK_SetupFROHFClocking(48000000U); /*!< Enable FRO HF(48MHz) output */
-
-  CLOCK_SetupFRO12MClocking(); /*!< Setup FRO12M clock */
-
-  /* The flow of decreasing voltage and frequency */
-  if (coreFreq > BOARD_BOOTCLOCKFRO48M_CORE_CLOCK) {
-    /* Configure Flash to support different voltage level and frequency */
-    FMU0->FCTRL = (FMU0->FCTRL & ~((uint32_t)FMU_FCTRL_RWSC_MASK)) | (FMU_FCTRL_RWSC(0x0U));
-    /* Specifies the operating voltage for the SRAM's read/write timing margin */
-    sramOption.operateVoltage = kSPC_sramOperateAt1P0V;
-    sramOption.requestVoltageUpdate = true;
-    (void)SPC_SetSRAMOperateVoltage(SPC0, &sramOption);
-    /* Set the LDO_CORE VDD regulator level */
-    ldoOption.CoreLDOVoltage = kSPC_CoreLDO_MidDriveVoltage;
-    ldoOption.CoreLDODriveStrength = kSPC_CoreLDO_NormalDriveStrength;
-    (void)SPC_SetActiveModeCoreLDORegulatorConfig(SPC0, &ldoOption);
-  }
-
-  /*!< Set up clock selectors - Attach clocks to the peripheries */
-
-  /*!< Set up dividers */
-  CLOCK_SetClockDiv(kCLOCK_DivFRO_HF_DIV, 1U); /* !< Set FROHFDIV divider to value 1 */
-
-  /* Set SystemCoreClock variable */
-  SystemCoreClock = BOARD_BOOTCLOCKFRO48M_CORE_CLOCK;
-}
 
 /*******************************************************************************
  ******************** Configuration BOARD_BootClockFRO64M **********************

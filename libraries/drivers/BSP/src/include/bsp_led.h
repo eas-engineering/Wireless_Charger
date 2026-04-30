@@ -59,7 +59,7 @@ typedef enum { LED_OFF = 0, LED_ON = 1 } led_state_t;
 
 typedef enum { LED_RED = 0, LED_GREEN = 1, LED_BLUE = 2 } led_color_t;
 
-typedef enum { RED = 0, GREEN = 1, BLUE = 2, WHITE = 3, YELLOW = 4, OFF = 5 } rgb_color_t;
+typedef enum { RED = 0, GREEN = 1, BLUE = 2, WHITE = 3, YELLOW = 4, AZURE = 5, OFF = 6 } rgb_color_t;
 
 /*****************************************************************************
 * Module Variable Definitions

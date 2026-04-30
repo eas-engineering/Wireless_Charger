@@ -70,6 +70,8 @@ Q_ASSERT_COMPILE(MAX_KERNEL_UNAWARE_CMSIS_PRI <= QF_AWARE_ISR_CMSIS_PRI);
 
 enum KernelAwareISRs {
   BSP_I2C_BUS_PRIO = QF_AWARE_ISR_CMSIS_PRI,
+  BSP_ADC_PRIO,
+  BSP_SERIAL_PRIO,
   MAX_KERNEL_AWARE_CMSIS_PRI /* keep always last */
 };
 
@@ -99,6 +101,8 @@ QF_onStartup(void) {
 
   // set priorities of ALL ISRs used in the system, see NOTE1
   NVIC_SetPriority(LPI2C0_IRQn, BSP_I2C_BUS_PRIO);
+  NVIC_SetPriority(ADC0_IRQn, BSP_ADC_PRIO);
+  NVIC_SetPriority(LPUART1_IRQn, BSP_SERIAL_PRIO);
 }
 
 /**

@@ -36,6 +36,8 @@
 #include "bsp_stwlc_driver.h"
 #include "project_settings.h"
 #include "battery_manager.h"
+#include "modbus_server_manager.h"
+#include "bsp_drive_serial.h"
 
 #if defined(USE_QPC)
 Q_DEFINE_THIS_FILE // define the name of this file for assertions
@@ -62,7 +64,8 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 ******************************************************************************/
 
 #if defined(USE_QPC)
-  static QF_MPOOL_EL(BspI2CEvt_t) smlPoolSto[10];
+  static QF_MPOOL_EL(DriveSerialEvt_t) smlSerialPoolSto[10];
+  //static QF_MPOOL_EL(BspI2CEvt_t) smlI2CPoolSto[10]; 
 static QSubscrList subscrSto[MAX_PUB_SIG];
 #endif
 
@@ -99,13 +102,14 @@ main(void) {
 #endif
 
   // initialize event pools
-  QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
+  QF_poolInit(smlSerialPoolSto, sizeof(smlSerialPoolSto), sizeof(smlSerialPoolSto[0]));
+  //QF_poolInit(smlI2CPoolSto, sizeof(smlI2CPoolSto), sizeof(smlI2CPoolSto[0]));
 
   // initialize publish-subscribe
   QActive_psInit(subscrSto, Q_DIM(subscrSto));
   //bsp_led_init();//debug da togliere
   /* Initialize other modules */
   battery_manager_init();
-
+  modbus_server_manager_init();
   return QF_run(); // run the QF application
 }

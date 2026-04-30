@@ -107,7 +107,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  voltage_mV = (adc_result.convValue * 3330U) / 65535U;
+  voltage_mV = (adc_result.convValue * 3307U) / 65535U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
@@ -117,18 +117,20 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  current_mA = (adc_result.convValue * 3330U) / 65535U;
+  current_mA = (adc_result.convValue * 3307U) / 65535U;
 
   //float dt = 1.0f;    // chiamata ogni secondo
 
   //uint32_t soc = soc_estimate(vbat, ibat, tbat, dt);
 
+  QK_ISR_ENTRY();
   AdcInfoEvt* evt = Q_NEW(AdcInfoEvt, ADC_BATTERY_INFO_SAMPLE_SIG);
   evt->vbat = voltage_mV;
   evt->ibat = current_mA;
   evt->tbat = temp;
   evt->soc = 110; // TODO: implementare stima SOC
   QF_PUBLISH(&evt->super, 0);
+  QK_ISR_EXIT();
 
   SDK_ISR_EXIT_BARRIER;
 }

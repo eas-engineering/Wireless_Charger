@@ -16,7 +16,9 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
     ${MAIN_SRC}
     ${CMAKE_CURRENT_LIST_DIR}/battery_manager.c
-    ${CMAKE_CURRENT_LIST_DIR}/soc_NiMh.c 
+    ${CMAKE_CURRENT_LIST_DIR}/soc_NiMh.c
+    ${CMAKE_CURRENT_LIST_DIR}/modbus_server_manager.c
+    ${CMAKE_CURRENT_LIST_DIR}/mb_port.c  
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

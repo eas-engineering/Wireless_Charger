@@ -189,6 +189,11 @@ bsp_color_rgb_set(rgb_color_t color) {
       GREEN_DRV_SET();
       BLUE_DRV_CLR();
     break;
+    case AZURE:
+      RED_DRV_CLR();
+      GREEN_DRV_SET();
+      BLUE_DRV_SET();
+    break;
     case OFF:
         RED_DRV_CLR();
         GREEN_DRV_CLR();

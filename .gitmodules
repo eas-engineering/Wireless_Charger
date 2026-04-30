@@ -13,3 +13,6 @@
 [submodule "libraries/middlewares/qpc"]
 	path = libraries/middlewares/qpc
 	url = https://github.com/eas-engineering/qpc.git
+[submodule "libraries/middlewares/modbus"]
+	path = libraries/middlewares/modbus
+	url = https://github.com/eas-engineering/modbus.git

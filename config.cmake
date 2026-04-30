@@ -31,7 +31,7 @@ set(USE_LVGL                  OFF)
 set(USE_LW_MATH               OFF)
 
 # Include Modbus Framework
-set(USE_MODBUS                OFF)
+set(USE_MODBUS                ON)
 
 # Include Modbus Framework
 set(USE_FLASH_DB              OFF)

@@ -27,6 +27,7 @@
 * Includes
 ******************************************************************************/
 #include "bsp_adc.h"
+#include "bsp_drive_serial.h"
 #include "project_settings.h"
 
 /*****************************************************************************
@@ -161,4 +162,12 @@ SysTick_Handler(void) {}
 void
 ADC0_IRQHandler(void) {
   bsp_adc_isr_handler();
+}
+
+void LPUART1_IRQHandler(void) {
+  /* This function is called when a USART interrupt occurs. It is responsible for
+   * handling the USART communication, such as reading received data and sending
+   * data when the transmission is complete. The specific actions taken depend on
+   * the type of USART event that triggered the interrupt. */
+  bsp_drive_serial_isr_rx_handler();
 }
