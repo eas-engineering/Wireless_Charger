@@ -36,6 +36,7 @@
 #include "fsl_port.h"
 #include "project_settings.h"
 #include "qpc.h"
+#include "soc_NiMh.h"
 /*****************************************************************************
 * Module Preprocessor Constants
 ******************************************************************************/
@@ -119,16 +120,11 @@ bsp_adc_isr_handler(void) {
   // 16-bit conversion result
   current_mA = (adc_result.convValue * 3307U) / 65535U;
 
-  //float dt = 1.0f;    // chiamata ogni secondo
-
-  //uint32_t soc = soc_estimate(vbat, ibat, tbat, dt);
-
   QK_ISR_ENTRY();
   AdcInfoEvt* evt = Q_NEW(AdcInfoEvt, ADC_BATTERY_INFO_SAMPLE_SIG);
   evt->vbat = voltage_mV;
   evt->ibat = current_mA;
   evt->tbat = temp;
-  evt->soc = 110; // TODO: implementare stima SOC
   QF_PUBLISH(&evt->super, 0);
   QK_ISR_EXIT();
 
@@ -266,7 +262,7 @@ bsp_adc_timer_trigger_init(void) {
 
   CTIMER_Init(CTIMER, &config);
 
-  /* Vogliamo un trigger ogni 1 secondo → period = 499 */
+  /* Vogliamo un trigger ogni 0.5 secondo → period = 249 */
   uint32_t period = 249U;
 
   //CTIMER_SetupPwm(CTIMER, CTIMER_MAT_PWM_PERIOD_CHANNEL, CTIMER_MAT_OUT, 50U, period, timerClock, false);

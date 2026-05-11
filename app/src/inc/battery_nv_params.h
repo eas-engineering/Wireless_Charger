@@ -1,26 +1,27 @@
 /*****************************************************************************
-* Filename              :   battery_manager.h
-* Author                :   Giulio Nardon
-* Origin Date           :   25 March 2026
+* Filename              :   eoti_nv_param.h
+* Author                :   Giulio Dalla Vecchia
+* Origin Date           :   20 April 2026
 *
-* Copyright (c) 2026 EAS Engineering srl. All rights reserved.
+* Copyright (c) 2025 EAS Engineering srl. All rights reserved.
+* SPDX-License-Identifier: MIT
 *
 ******************************************************************************/
 
-/** @file battery_manager.h
+/** @file eoti_nv_param.h
  *  @brief This module handles the doxygen comments.
  *
  *  This is the header file for the definition of doxygen comments function.
  */
 
-#ifndef BATTERY_MANAGER_H_
-#define BATTERY_MANAGER_H_
+#ifndef EOTI_NV_PARAM_H_
+#define EOTI_NV_PARAM_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include "qpc.h"
+#include "nv_params.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,34 +45,35 @@ extern "C" {
 * Module Typedefs
 ******************************************************************************/
 
-typedef struct {
-  QEvt super;
-  bool isCharging;
-  uint16_t vbat_mm;
-  uint16_t ibat_mm;
-  float mAh;
-  float mAh_cycles;
-  bool first_cycle;
-} DatabaseEvt;
+/* Enum IDs for eOTI */
+typedef enum {
+  SOC_PARAM = 0,
+  MAH_PARAM,
+  MAH_CYCLES_PARAM,
+  N_CYCLES_PARAM,
+  ZERO_CURR_VAL_PARAM,
+  FIRST_CYCLE_PARAM,
+  BATTERY_PARAM_COUNT,
+} param_id_t;
 
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
 
+extern const nv_params_ctx_t battery_nv_ctx; /* context instance for battery */
+
 /*****************************************************************************
- * @brief Initializes the battery manager module.
- *
- * @details This function is responsible for initializing the battery manager module.
- *        It should be called before any other function in this module.
- *
- * @return None
- *****************************************************************************/
-void battery_manager_init(void);
+* Function Prototypes
+******************************************************************************/
+
+/**
+ * }
+ */
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif /*BATTERY_MANAGER_H_*/
+#endif /*EOTI_NV_PARAM_H_*/
 
 /*** End of File *************************************************************/

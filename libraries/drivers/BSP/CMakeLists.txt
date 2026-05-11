@@ -18,6 +18,7 @@ file(GLOB SEGGER_RTT_SOURCE_FILES_LIST
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_tick.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_ntc_battery.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/bsp_drive_serial.c"
+    "${CMAKE_CURRENT_LIST_DIR}/src/bsp_eeprom.c"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE

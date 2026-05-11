@@ -41,8 +41,6 @@
 
 #define I2C_MASTER_SLAVE_ADDR_7BIT 0x7EU
 
-#define MAX_RETRIES_DEFAULT        3U
-
 /*****************************************************************************
 * Module Preprocessor Macros
 ******************************************************************************/
@@ -51,381 +49,120 @@
 * Module Typedefs
 ******************************************************************************/
 
-typedef struct {
-
-  /* Super class */
-  QHsm super;
-
-  /* Reference to the container active object */
-  QActive* container;
-
-  /* Reference to the event */
-  QEvt const* EvtRef;
-
-  /* Deferred event queue */
-  QEQueue deferredEvtQueue;
-
-  /* I2C interface reference */
-  lpi2c_master_handle_t transfer_handle;
-  lpi2c_master_transfer_t masterXfer;
-
-  /* Number of attempts */
-  uint32_t retry;
-
-  /* State reference */
-  QStateHandler reminder;
-
-} bsp_i2c_t;
-
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
 
-static QState bsp_i2c_initial(bsp_i2c_t* const me, void const* const par);
-static QState bsp_i2c_idle(bsp_i2c_t* const me, QEvt const* const e);
-static QState bsp_i2c_busy(bsp_i2c_t* const me, QEvt const* const e);
-static QState bsp_i2c_trasmitting(bsp_i2c_t* const me, QEvt const* const e);
-static QState bsp_i2c_receiving(bsp_i2c_t* const me, QEvt const* const e);
-
+void bsp_i2c_init(void);
 static void bsp_i2c_pin_init(void);
 static void bsp_i2c_peripheral_init(void);
-
-static void lpi2c_master_callback(LPI2C_Type* base, lpi2c_master_handle_t* handle, status_t status, void* userData);
 
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
 
-static bsp_i2c_t bsp_i2c_instances = {0};
 
 /*****************************************************************************
 * Function Definitions
 ******************************************************************************/
 
-QHsm*
-bsp_i2c_init(QActive* const container) {
-  static QEvt const* DeferEvtQueueSto[10];
-  bsp_i2c_t* me = &bsp_i2c_instances;
-
-  QS_OBJ_DICTIONARY(&bsp_i2c_instances);
-  QS_FUN_DICTIONARY(&bsp_i2c_initial);
-  QS_FUN_DICTIONARY(&bsp_i2c_idle);
-  QS_FUN_DICTIONARY(&bsp_i2c_trasmitting);
-
-  QS_SIG_DICTIONARY(EXT_BUS_SEND_SIG, (void*)0);
-  QS_SIG_DICTIONARY(EXT_BUS_RECEIVE_SIG, (void*)0);
-  QS_SIG_DICTIONARY(EXT_BUS_TX_CMPL_SIG, (void*)0);
-  QS_SIG_DICTIONARY(EXT_BUS_RX_CMPL_SIG, (void*)0);
-  QS_SIG_DICTIONARY(EXT_BUS_REQ_CMPL_SIG, (void*)0);
-
-  me->container = container;
-
-  /* Initialize the deferred event queue */
-  QEQueue_init(&me->deferredEvtQueue, DeferEvtQueueSto, Q_DIM(DeferEvtQueueSto));
-
-  QHsm_ctor(&(me->super), Q_STATE_CAST(&bsp_i2c_initial));
-
-  return &(me->super);
-}
-
-/**
- * @brief Initial state handler for the bsp_ext_bus_t state machine.
- *
- * This function sets the initial state of the bsp_ext_bus_t state machine
- * to bsp_i2c_idle. It is called during the initialization process.
- *
- * @param me Pointer to the bsp_ext_bus_t object.
- * @param par Unused parameter.
- *
- * @return Q_TRAN to transition to the bsp_i2c_idle state.
- */
-static QState
-bsp_i2c_initial(bsp_i2c_t* const me, void const* const par) {
-  (void)par; // unused parameter
-
+void bsp_i2c_init(){
   bsp_i2c_pin_init();
   bsp_i2c_peripheral_init();
-
-  /* Create the LPI2C handle for the non-blocking transfer */
-  LPI2C_MasterTransferCreateHandle(I2C_MASTER_BASE, &(me->transfer_handle), lpi2c_master_callback, (void*)me);
-
-  return Q_TRAN(&bsp_i2c_idle);
 }
 
-/**
- * @brief The idle state of the bsp_ext_bus_t state machine.
- *
- * In this state, the bsp_ext_bus_t state machine waits for an
- * EXT_BUS_SEND_SIG event to be posted to it. When such an event is
- * received, the state machine transitions to the bsp_i2c_trasmitting
- * state to handle the transmission.
- *
- * @param[in] me Pointer to the bsp_ext_bus_t object.
- * @param[in] e Pointer to the event that triggered the transition
- *              to this state.
- *
- * @return QState value indicating the status of the transition.
- */
-static QState
-bsp_i2c_idle(bsp_i2c_t* const me, QEvt const* const e) {
-  QState status_;
-  switch (e->sig) {
-    case Q_INIT_SIG: {
-      QActive_recall((QActive*)(me->container), &me->deferredEvtQueue);
-      status_ = Q_HANDLED();
-      break;
+i2c_error_t bsp_i2c_writeBytes(uint8_t deviceAddress,
+                              i2c_mem_addr_t memAddrType,
+                              uint16_t memAddress,
+                              uint16_t numBytes,
+                              uint8_t *pData)
+{
+    lpi2c_master_transfer_t xfer = {0};
+    uint8_t addrBuf[2];
+
+    if ((pData == NULL) || (numBytes == 0))
+    {
+        return I2C_ERROR;
     }
 
-    case BSP_I2C_SEND_SIG: {
-      me->retry = 0U;
-      Q_NEW_REF(me->EvtRef, QEvt);
-      status_ = Q_TRAN(&bsp_i2c_trasmitting);
-      break;
+    /* Preparazione indirizzo memoria */
+    if (memAddrType == I2C_MEM_ADDR_16)
+    {
+        addrBuf[0] = (uint8_t)((memAddress >> 8) & 0xFF);  // MSB
+        addrBuf[1] = (uint8_t)(memAddress & 0xFF);         // LSB
+
+        xfer.subaddress = ((uint32_t)addrBuf[0] << 8) | addrBuf[1];
+        xfer.subaddressSize = 2;
+    }
+    else
+    {
+        xfer.subaddress = memAddress & 0xFF;
+        xfer.subaddressSize = 1;
     }
 
-    case BSP_I2C_RECEIVE_SIG: {
-      me->retry = 0U;
-      Q_NEW_REF(me->EvtRef, QEvt);
-      status_ = Q_TRAN(&bsp_i2c_receiving);
-      break;
+    xfer.slaveAddress   = deviceAddress;
+    xfer.direction      = kLPI2C_Write;
+    xfer.data           = pData;
+    xfer.dataSize       = numBytes;
+    xfer.flags          = kLPI2C_TransferDefaultFlag;
+
+    if (LPI2C_MasterTransferBlocking(I2C_MASTER_BASE, &xfer) != kStatus_Success)
+    {
+        return I2C_ERROR;
     }
 
-    default: {
-      status_ = Q_SUPER(&QHsm_top);
-      break;
-    }
-  }
-  return status_;
+    return I2C_NO_ERROR;
 }
 
-/**
- * @brief The busy state of the bsp_ext_bus_t state machine.
- *
- * In this state, the bsp_ext_bus_t state machine defers any new
- * EXT_BUS_SEND_SIG or EXT_BUS_RECEIVE_SIG events until the current
- * transmission/reception is completed. When the transmission/reception
- * is completed, the state machine transitions back to the ext_bus_idle
- * state. If a Q_EXIT_SIG event is received, the state machine also
- * transitions back to the ext_bus_idle state.
- *
- * @param[in] me Pointer to the bsp_ext_bus_t object.
- * @param[in] e Pointer to the event that triggered the transition
- *              to this state.
- *
- * @return QState value indicating the status of the transition.
- */
-static QState
-bsp_i2c_busy(bsp_i2c_t* const me, QEvt const* const e) {
-  QState status_;
-  switch (e->sig) {
-    case Q_ENTRY_SIG: {
-      status_ = Q_HANDLED();
-      break;
+i2c_error_t bsp_i2c_readByte(uint8_t deviceAddress,
+                             uint16_t memAddress,
+                             uint16_t numBytes,
+                             uint8_t *pData)
+{
+    lpi2c_master_transfer_t xfer = {0};
+
+    if ((pData == NULL) || (numBytes == 0))
+    {
+        return I2C_ERROR;
     }
 
-    case Q_EXIT_SIG: {
-      Q_DELETE_REF(me->EvtRef);
-      status_ = Q_HANDLED();
-      break;
+    /* Configurazione trasferimento I2C */
+    xfer.slaveAddress     = deviceAddress;
+    xfer.direction        = kLPI2C_Read;
+    xfer.subaddress       = memAddress;
+    xfer.subaddressSize   = 2;                 
+    xfer.data             = pData;
+    xfer.dataSize         = numBytes;
+    xfer.flags            = kLPI2C_TransferDefaultFlag;
+    
+    status_t status;
+    status = LPI2C_MasterTransferBlocking(I2C_MASTER_BASE, &xfer);
+    if (status != kStatus_Success)
+    {
+        return I2C_ERROR;
     }
 
-    case BSP_I2C_RECEIVE_SIG:
-    case BSP_I2C_SEND_SIG: {
-      QActive_defer((QActive*)(me->container), &me->deferredEvtQueue, e);
-      status_ = Q_HANDLED();
-      break;
-    }
-
-    case BSP_I2C_TX_RX_ERROR_SIG: {
-
-      /* Increment the number of retries */
-      ++(me->retry);
-
-      if (me->retry < MAX_RETRIES_DEFAULT) {
-        /* Send a request to the drive manager to read parameters configuration */
-        status_ = Q_TRAN(me->reminder);
-      } else {
-        static const QEvt evt = QEVT_INITIALIZER(BSP_I2C_TIMEOUT_SIG);
-        QACTIVE_POST(me->container, &evt, 0U);
-        status_ = Q_HANDLED();
-      }
-
-      break;
-    }
-
-    default: {
-      status_ = Q_SUPER(&bsp_i2c_idle);
-      break;
-    }
-  }
-  return status_;
+    return I2C_NO_ERROR;
 }
 
-/**
- * @brief The transmitting state of the bsp_ext_bus_t state machine.
- *
- * In this state, the bsp_ext_bus_t state machine transmits the data
- * contained in the me->txEvtRef event. When the transmission is
- * completed, the state machine transitions back to the bsp_i2c_idle
- * state. If another EXT_BUS_SEND_SIG event is received while the
- * transmission is in progress, it is deferred until the transmission
- * is completed.
- *
- * @param[in] me Pointer to the bsp_ext_bus_t object.
- * @param[in] e Pointer to the event that triggered the transition
- *              to this state.
- *
- * @return QState value indicating the status of the transition.
- */
-static QState
-bsp_i2c_trasmitting(bsp_i2c_t* const me, QEvt const* const e) {
-  QState status_;
-  switch (e->sig) {
-    case Q_ENTRY_SIG: {
-
-      status_ = Q_HANDLED();
-      break;
+i2c_error_t bsp_i2c_getState(i2c_state_t *pt_state)
+{
+    if (pt_state == NULL)
+    {
+        return I2C_ERROR;
     }
 
-    case Q_INIT_SIG: {
-
-      me->reminder = Q_STATE_CAST(&bsp_i2c_trasmitting);
-
-      /* subAddress = 0x01, data = g_master_txBuff - write to slave.
-      start + slaveaddress(w) + subAddress + length of data buffer + data buffer + stop*/
-      me->masterXfer.slaveAddress = I2C_MASTER_SLAVE_ADDR_7BIT;
-      me->masterXfer.direction = kLPI2C_Write;
-      me->masterXfer.subaddress = (uint32_t)((BspI2CEvt_t*)me->EvtRef)->DevAddress;
-      me->masterXfer.subaddressSize = 1;
-      me->masterXfer.data = ((BspI2CEvt_t*)me->EvtRef)->pui8_data;
-      me->masterXfer.dataSize = ((BspI2CEvt_t*)me->EvtRef)->len;
-      me->masterXfer.flags = kLPI2C_TransferDefaultFlag;
-
-      /* Send master non-blocking data to slave */
-      if (LPI2C_MasterTransferNonBlocking(I2C_MASTER_BASE, &(me->transfer_handle), &(me->masterXfer))
-          != kStatus_Success) {
-        QEvt* const evt = (QEvt* const)(e);
-        evt->sig = BSP_I2C_REQ_ERROR_SIG;
-        QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, (QActive*)me);
-        status_ = Q_TRAN(&bsp_i2c_idle);
-      } else {
-        status_ = Q_HANDLED();
-      }
-
-      break;
+    /* Controllo Bus Busy Flag del modulo LPI2C */
+    if ((I2C_MASTER_BASE->MSR & LPI2C_MSR_BBF_MASK) != 0U)
+    {
+        *pt_state = I2C_STATE_BUSY;
+    }
+    else
+    {
+        *pt_state = I2C_STATE_READY;
     }
 
-    case BSP_I2C_TX_RX_CMPL_SIG: {
-
-      QEvt* const evt = (QEvt* const)(me->EvtRef);
-
-      /* When It's done, go back to idle */
-      evt->sig = BSP_I2C_REQ_CMPL_SIG;
-      QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, (QActive*)me);
-
-      status_ = Q_TRAN(&bsp_i2c_idle);
-      break;
-    }
-
-    case BSP_I2C_TIMEOUT_SIG: {
-
-      QEvt* const evt = (QEvt* const)(me->EvtRef);
-
-      /* When It's done, go back to idle */
-      evt->sig = BSP_I2C_REQ_ERROR_SIG;
-      QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, (QActive*)me);
-
-      status_ = Q_TRAN(&bsp_i2c_idle);
-      break;
-    }
-
-    default: {
-      status_ = Q_SUPER(&bsp_i2c_busy);
-      break;
-    }
-  }
-  return status_;
-}
-
-/**
- * @brief The receiving state of the bsp_ext_bus_t state machine.
- *
- * In this state, the bsp_ext_bus_t state machine receives the data
- * contained in the me->rxEvtRef event. When the reception is
- * completed, the state machine transitions back to the bsp_i2c_idle
- * state. If another EXT_BUS_RECEIVE_SIG event is received while the
- * reception is in progress, it is deferred until the reception
- * is completed.
- *
- * @param[in] me Pointer to the bsp_ext_bus_t object.
- * @param[in] e Pointer to the event that triggered the transition
- *              to this state.
- *
- * @return QState value indicating the status of the transition.
- */
-static QState
-bsp_i2c_receiving(bsp_i2c_t* const me, QEvt const* const e) {
-  QState status_;
-  switch (e->sig) {
-    case Q_ENTRY_SIG: {
-
-      me->reminder = Q_STATE_CAST(&bsp_i2c_receiving);
-
-      /* subAddress = 0x01, data = g_master_txBuff - write to slave.
-      start + slaveaddress(w) + subAddress + length of data buffer + data buffer + stop*/
-      me->masterXfer.slaveAddress = I2C_MASTER_SLAVE_ADDR_7BIT;
-      me->masterXfer.direction = kLPI2C_Read;
-      me->masterXfer.subaddress = (uint32_t)((BspI2CEvt_t*)me->EvtRef)->DevAddress;
-      me->masterXfer.subaddressSize = 1;
-      me->masterXfer.data = ((BspI2CEvt_t*)me->EvtRef)->pui8_data;
-      me->masterXfer.dataSize = ((BspI2CEvt_t*)me->EvtRef)->len;
-      me->masterXfer.flags = kLPI2C_TransferDefaultFlag;
-
-      /* Send master non-blocking data to slave */
-      if (LPI2C_MasterTransferNonBlocking(I2C_MASTER_BASE, &(me->transfer_handle), &(me->masterXfer))
-          != kStatus_Success) {
-        QEvt* const evt = (QEvt* const)(e);
-        evt->sig = BSP_I2C_REQ_ERROR_SIG;
-        QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, (QActive*)me);
-        status_ = Q_TRAN(&bsp_i2c_idle);
-      } else {
-        status_ = Q_HANDLED();
-      }
-
-      status_ = Q_HANDLED();
-      break;
-    }
-
-    case BSP_I2C_TX_RX_CMPL_SIG: {
-
-      QEvt* const evt = (QEvt* const)(me->EvtRef);
-
-      /* When It's done, go back to idle */
-      evt->sig = BSP_I2C_REQ_CMPL_SIG;
-      QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, me);
-
-      status_ = Q_TRAN(&bsp_i2c_idle);
-      break;
-    }
-
-    case BSP_I2C_TIMEOUT_SIG: {
-
-      QEvt* const evt = (QEvt* const)(me->EvtRef);
-
-      /* When It's done, go back to idle */
-      evt->sig = BSP_I2C_REQ_ERROR_SIG;
-      QACTIVE_POST(((BspI2CEvt_t*)me->EvtRef)->AO_sender, evt, (QActive*)me);
-
-      status_ = Q_TRAN(&bsp_i2c_idle);
-      break;
-    }
-
-    default: {
-      status_ = Q_SUPER(&bsp_i2c_busy);
-      break;
-    }
-  }
-  return status_;
+    return I2C_NO_ERROR;
 }
 
 /**
@@ -446,7 +183,7 @@ bsp_i2c_pin_init(void) {
   /* PORT3 peripheral is released from reset */
   RESET_ReleasePeripheralReset(kPORT3_RST_SHIFT_RSTn);
 
-  const port_pin_config_t port3_27_pin34_config = {/* Internal pull-up resistor is enabled */
+  const port_pin_config_t port3_27_pin17_config = {/* Internal pull-up resistor is enabled */
                                                    kPORT_PullUp,
                                                    /* Low internal pull resistor value is selected. */
                                                    kPORT_LowPullResistor,
@@ -468,10 +205,10 @@ bsp_i2c_pin_init(void) {
                                                    kPORT_InputNormal,
                                                    /* Pin Control Register fields [15:0] are not locked */
                                                    kPORT_UnlockRegister};
-  /* PORT3_27 (pin 34) is configured as LPI2C0_SCL */
-  PORT_SetPinConfig(PORT3, 27U, &port3_27_pin34_config);
+  /* PORT3_27 (pin 17) is configured as LPI2C0_SCL */
+  PORT_SetPinConfig(PORT3, 27U, &port3_27_pin17_config);
 
-  const port_pin_config_t port3_28_pin33_config = {/* Internal pull-up resistor is enabled */
+  const port_pin_config_t port3_28_pin16_config = {/* Internal pull-up resistor is enabled */
                                                    kPORT_PullUp,
                                                    /* Low internal pull resistor value is selected. */
                                                    kPORT_LowPullResistor,
@@ -494,7 +231,7 @@ bsp_i2c_pin_init(void) {
                                                    /* Pin Control Register fields [15:0] are not locked */
                                                    kPORT_UnlockRegister};
   /* PORT3_28 (pin 33) is configured as LPI2C0_SDA */
-  PORT_SetPinConfig(PORT3, 28U, &port3_28_pin33_config);
+  PORT_SetPinConfig(PORT3, 28U, &port3_28_pin16_config);
 }
 
 /**
@@ -524,29 +261,4 @@ bsp_i2c_peripheral_init(void) {
 
   /* Initialize the LPI2C master peripheral */
   LPI2C_MasterInit(I2C_MASTER_BASE, &masterConfig, CLOCK_GetLpi2cClkFreq());
-}
-
-/**
- * @brief LPI2C master callback function.
- *
- * This function is called by the LPI2C master peripheral when a transmission or reception
- * is complete. It posts an event to the active object's event queue to notify the
- * application that a transmission or reception has completed.
- *
- * @param base Pointer to the LPI2C master peripheral.
- * @param handle Pointer to the LPI2C master handle.
- * @param status Status of the transmission or reception.
- * @param userData Pointer to the active object which owns this callback function.
- */
-static void
-lpi2c_master_callback(LPI2C_Type* base, lpi2c_master_handle_t* handle, status_t status, void* userData) {
-  bsp_i2c_t* me = (bsp_i2c_t*)userData;
-
-  if (status != kStatus_Success) {
-    static const QEvt evt = QEVT_INITIALIZER(BSP_I2C_TX_RX_ERROR_SIG);
-    QACTIVE_POST(me->container, &evt, 0U);
-  } else {
-    static const QEvt evt = QEVT_INITIALIZER(BSP_I2C_TX_RX_CMPL_SIG);
-    QACTIVE_POST(me->container, &evt, 0U);
-  }
 }

@@ -32,6 +32,7 @@
 * Includes
 ******************************************************************************/
 #include <stdint.h>
+#include "bsp_eeprom.h"
 #include "global_signals.h"
 #include "qpc.h"
 
@@ -57,26 +58,11 @@ extern "C" {
 * Module Typedefs
 ******************************************************************************/
 
-/* Enumerations for serial interface signals */
-enum {
-  BSP_I2C_SEND_SIG = BSP_I2C_GROUP, /* Signal used when you want to send data */
-  BSP_I2C_RECEIVE_SIG,              /* Signal used when data has been received */
-  BSP_I2C_TX_RX_CMPL_SIG,           /* Signal used when the transmission is complete */
-  BSP_I2C_TX_RX_ERROR_SIG,          /* Signal used when an error occurs */
-  BSP_I2C_TIMEOUT_SIG,              /* Signal used when a timeout occurs */
-  BSP_I2C_REQ_CMPL_SIG,             /* Signal used when the request is complete */
-  BSP_I2C_REQ_ERROR_SIG,            /* Signal used when an error occurs */
-  BSP_I2C_MAX_SIG,
-};
+typedef enum { I2C_NO_ERROR = 0, I2C_ERROR } i2c_error_t;
 
-typedef struct {
-  QEvt super;
-  uint16_t DevAddress;
-  uint16_t MemAddress;
-  uint8_t pui8_data[128];
-  uint32_t len;
-  QActive* AO_sender;
-} BspI2CEvt_t;
+typedef enum { I2C_MEM_ADDR_8, I2C_MEM_ADDR_16 } i2c_mem_addr_t;
+
+typedef enum { I2C_STATE_READY = 0, I2C_STATE_BUSY } i2c_state_t;
 
 /*****************************************************************************
 * Module Variable Definitions
@@ -86,7 +72,14 @@ typedef struct {
 * Function Prototypes
 ******************************************************************************/
 
-QHsm* bsp_i2c_init(QActive* const container);
+void bsp_i2c_init(void);
+
+i2c_error_t bsp_i2c_writeBytes(uint8_t deviceAddress, i2c_mem_addr_t memAddrType, uint16_t memAddress,
+                               uint16_t numBytes, uint8_t* pData);
+
+i2c_error_t bsp_i2c_readByte(uint8_t deviceAddress, uint16_t memAddress, uint16_t numBytes, uint8_t* pData);
+
+i2c_error_t bsp_i2c_getState(i2c_state_t* state);
 
 /**
  * }

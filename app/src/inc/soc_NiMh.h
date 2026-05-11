@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 /**
@@ -50,7 +50,13 @@ extern "C"{
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
+uint16_t soc_from_voltage_nimh(uint16_t v_mm, uint16_t tempC, uint16_t i_mm, bool isCharging);
 
+uint16_t soc_coulomb_advanced(float Q_mAh, uint16_t temp);
+
+uint16_t soc_estimate(uint16_t soc_cc, uint16_t soc_v, uint16_t i_mm, bool isCharging, bool first_cycle);
+
+uint16_t time_charge_estimate(float mAh, float mAh_max, uint16_t ibat, uint16_t last_minutes, bool first_cycle);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -59,4 +65,3 @@ extern "C"{
 #endif /*SOC_H_*/
 
 /*** End of File *************************************************************/
-

@@ -225,7 +225,6 @@ mb_server_active_state(ModbusServerManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      //QTimeEvt_rearm(&me->timeEvt, 10);
       status = Q_HANDLED();
       break;
     }
@@ -237,7 +236,7 @@ mb_server_active_state(ModbusServerManager_t* const me, QEvt const* const e) {
       me->holding_register_buff[HR_REG_OFF(HR_TBAT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->tbat);
       me->holding_register_buff[HR_REG_OFF(HR_SOC_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->soc);
       me->holding_register_buff[HR_REG_OFF(HR_END_OF_CHARGE_TIME_ADDR)] =
-        (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->end_of_charge_time);
+        (uint16_t)0U;//(uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->end_of_charge_time);
       me->holding_register_buff[HR_REG_OFF(HR_NUMBER_OF_CHARGES_ADDR)] =
         (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->number_of_charges);
 

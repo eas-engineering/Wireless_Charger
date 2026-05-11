@@ -38,6 +38,7 @@
 #include "battery_manager.h"
 #include "modbus_server_manager.h"
 #include "bsp_drive_serial.h"
+#include "database_manager.h"
 
 #if defined(USE_QPC)
 Q_DEFINE_THIS_FILE // define the name of this file for assertions
@@ -109,6 +110,7 @@ main(void) {
   QActive_psInit(subscrSto, Q_DIM(subscrSto));
   //bsp_led_init();//debug da togliere
   /* Initialize other modules */
+  database_manager_init();
   battery_manager_init();
   modbus_server_manager_init();
   return QF_run(); // run the QF application

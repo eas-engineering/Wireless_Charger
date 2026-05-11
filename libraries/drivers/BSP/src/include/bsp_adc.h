@@ -59,7 +59,7 @@ typedef struct {
     QEvt super;      
     uint32_t vbat;   // mV
     uint32_t ibat;   // mA
-    uint32_t tbat;   
+    int32_t tbat;   
     uint32_t soc;
 } AdcInfoEvt;
 

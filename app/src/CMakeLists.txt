@@ -18,7 +18,10 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/battery_manager.c
     ${CMAKE_CURRENT_LIST_DIR}/soc_NiMh.c
     ${CMAKE_CURRENT_LIST_DIR}/modbus_server_manager.c
-    ${CMAKE_CURRENT_LIST_DIR}/mb_port.c  
+    ${CMAKE_CURRENT_LIST_DIR}/mb_port.c
+    ${CMAKE_CURRENT_LIST_DIR}/database_manager.c
+    ${CMAKE_CURRENT_LIST_DIR}/nv_params.c
+    ${CMAKE_CURRENT_LIST_DIR}/battery_nv_params.c
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

@@ -1,26 +1,27 @@
 /*****************************************************************************
-* Filename              :   battery_manager.h
-* Author                :   Giulio Nardon
-* Origin Date           :   25 March 2026
+* Filename              :   database_manager.h
+* Author                :   Giulio Dalla Vecchia
+* Origin Date           :   27 March 2025
 *
-* Copyright (c) 2026 EAS Engineering srl. All rights reserved.
+* Copyright (c) 2024 EAS SPA. All rights reserved.
 *
 ******************************************************************************/
 
-/** @file battery_manager.h
+/** @file database_manager.h
  *  @brief This module handles the doxygen comments.
  *
  *  This is the header file for the definition of doxygen comments function.
  */
 
-#ifndef BATTERY_MANAGER_H_
-#define BATTERY_MANAGER_H_
+#ifndef DATABASE_MANAGER_H_
+#define DATABASE_MANAGER_H_
 
 /*****************************************************************************
 * Includes
 ******************************************************************************/
 #include <stdint.h>
-#include "qpc.h"
+#include "global_signals.h"
+#include "battery_nv_params.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,34 +45,73 @@ extern "C" {
 * Module Typedefs
 ******************************************************************************/
 
+/**
+ * @brief Signal definition for database events management
+ * 
+ */
+enum {
+  ENV_DATABASE_WRITE_SIG = DATABASE_GROUP,
+  NAMEPLATE_DATABASE_WRITE_SIG,
+  DATABASE_LOG_EVENT_SAVE_SIG,
+  DATABASE_LOG_EVENT_READ_SIG,
+  DATABASE_MAINTENANCE_EVENT_SAVE_SIG,
+  DATABASE_MAINTENANCE_EVENT_READ_SIG,
+  DATABASE_UPDATE_WORKING_TIME_SIG,
+  DATABASE_MAX_SIG,
+};
+
+/**
+ * Tipo di operazione possibile relativamente ad un parametro
+ */
+typedef enum { DB_NO_OP, DB_WRITING } db_operation_t;
+
 typedef struct {
   QEvt super;
-  bool isCharging;
-  uint16_t vbat_mm;
-  uint16_t ibat_mm;
-  float mAh;
-  float mAh_cycles;
-  bool first_cycle;
-} DatabaseEvt;
+
+  union param_union {
+
+    struct battery_params {
+
+      struct kv_params {
+        uint16_t value[BATTERY_PARAM_COUNT];
+        db_operation_t operation[BATTERY_PARAM_COUNT];
+      } kv;
+
+      struct datalog_params {
+        int16_t min;
+        int16_t max;
+      } datalog;
+
+    } battery;
+
+  } params;
+
+} nv_params_evt_t;
 
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
 
+extern QActive* const AO_DatabaseManager; // opaque pointer
+
 /*****************************************************************************
- * @brief Initializes the battery manager module.
- *
- * @details This function is responsible for initializing the battery manager module.
- *        It should be called before any other function in this module.
- *
- * @return None
- *****************************************************************************/
-void battery_manager_init(void);
+* Function Prototypes
+******************************************************************************/
+
+void database_manager_init(void);
+
+nv_params_evt_t* database_alloc_new_event(QSignal signal);
+
+/**
+ * }
+ */
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif /*BATTERY_MANAGER_H_*/
+#endif /*DATABASE_MANAGER_H_*/
 
 /*** End of File *************************************************************/
+
+
