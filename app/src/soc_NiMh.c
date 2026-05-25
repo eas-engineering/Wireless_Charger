@@ -38,11 +38,6 @@ typedef struct {
   float soc;     // 0–1
 } SocLutEntry;
 
-typedef struct {
-  float x; // SoC
-  float P; // varianza
-} kalman_soc_t;
-
 /*****************************************************************************
 * Function Prototypes
 ******************************************************************************/
@@ -62,16 +57,33 @@ static SocLutEntry soc_lut_on_work[LUT_SIZE] = {{16.8f, 100.0f}, {16.32f, 95.0f}
                                                 {14.64f, 30.0f}, {14.40f, 20.0f}, {14.16f, 15.0f}, {13.80f, 10.0f},
                                                 {13.44f, 5.0f},  {13.20f, 2.0f},  {12.96f, 0.0f}};
 
-static float Qmax_mAh = 1900.0f; // capacità variabile
-
 /*****************************************************************************
 * Function Definitions
 ******************************************************************************/
 
+// float
+// capacity_temp_corr(float tempC) {
+//   if (tempC <= 0) {
+//     return 0.75f;
+//   }
+//   if (tempC <= 10) {
+//     return 0.85f;
+//   }
+//   if (tempC <= 20) {
+//     return 0.95f;
+//   }
+//   if (tempC <= 35) {
+//     return 1.00f;
+//   }
+//   if (tempC <= 45) {
+//     return 0.98f;
+//   }
+//   return 1.0f;
+// }
 float
 capacity_temp_corr(float tempC) {
   if (tempC <= 0) {
-    return 0.75f; // 75%
+    return 0.75f;
   }
   if (tempC <= 10) {
     return 0.85f;
@@ -79,26 +91,23 @@ capacity_temp_corr(float tempC) {
   if (tempC <= 20) {
     return 0.95f;
   }
-  if (tempC <= 35) {
+  if (tempC <= 29) {
     return 1.00f;
   }
   if (tempC <= 45) {
     return 0.98f;
   }
-  return 1.0f; // safety
+  return 1.0f;
 }
-
 uint16_t
-soc_coulomb_advanced(float Q_mAh, uint16_t temp) {
+soc_coulomb(float Q_mAh, uint16_t Q_mAh_max, int16_t temp, bool first_cycle, bool isCharging) {
   /* Aggiorna capacità max in funzione temperatura */
+  if (first_cycle) {
+    return 0;
+  }
   float tempC = temp / 100.0f;
-  Qmax_mAh = 1900.0f * capacity_temp_corr(tempC);
-
-  /* Autoscarica */
-  //float dQ_auto = autoscarica_per_sample(tempC, dt_sec / 3600.0f, Qmax_mAh);
-
-  //Q_mAh -= dQ_auto;
-
+  float Qmax_mAh = (float)Q_mAh_max * capacity_temp_corr(tempC);
+  uint8_t soc;
   /* Saturazione */
   if (Q_mAh < 0) {
     Q_mAh = 0;
@@ -106,9 +115,13 @@ soc_coulomb_advanced(float Q_mAh, uint16_t temp) {
   if (Q_mAh > Qmax_mAh) {
     Q_mAh = Qmax_mAh;
   }
-
-  /* SoC grezzo */
-  return (uint8_t)((Q_mAh / Qmax_mAh) * 100.0f);
+  soc = (Q_mAh / Qmax_mAh) * 100.0f;
+  soc = (uint16_t)((soc + 2.5f) / 5.0f) * 5;
+  /* SoC */
+  if(soc > 95 && isCharging) {
+    soc = 95;
+  }
+  return (uint8_t)(soc);
 }
 
 float
@@ -141,7 +154,7 @@ soc_from_voltage_nimh(uint16_t v_mm, uint16_t tempC, uint16_t i_mm, bool isCharg
   const SocLutEntry* lut = isCharging ? soc_lut_on_charge : soc_lut_on_work;
 
   /* --- Conversione e filtro tensione --- */
-  float v = v_mm / 100.0f; // es: 1230 -> 12.30V
+  float v = v_mm / 100.0f; // 1230 -> 12.30V
 
   if (!init) {
     v_filt = v;
@@ -204,70 +217,6 @@ soc_from_voltage_nimh(uint16_t v_mm, uint16_t tempC, uint16_t i_mm, bool isCharg
   return (uint16_t)(soc_filt);
 }
 
-// uint16_t
-// soc_from_voltage_nimh(uint16_t v_mm, uint16_t tempC, uint16_t i_mm, bool isCharging) {
-
-//   static float old_soc = 0;
-//   static float vf_old = 0;
-//   static uint16_t cnt_soc = 0;
-//   /* calcolo lo SoC solo quando la batteria è in idle */
-//   if (i_mm > 250U && !isCharging) {
-//     return old_soc;
-//   }
-//   /* copio la tabella corretta di SoC in base a se sono in carica oppure no */
-//   for (int i = 0; i < LUT_SIZE; i++) {
-//     soc_lut[i] = (isCharging) ? soc_lut_on_charge[i] : soc_lut_on_work[i];
-//   }
-//   /* filtro passa-basso */
-//   float vf = filter_voltage(v_mm / 100.0f);
-//   //float vf = v_mm / 100.0f;
-//   /* inizializzo vf_old la prima volta */
-//   if (vf > vf_old + 10.0f) {
-//     vf_old = vf;
-//   } else {
-//     /* calcolo SoC solo dopo un certo tempo -> 0.5[sec]*cnt_soc */
-//     if (++cnt_soc > 5) {
-//       cnt_soc = 0;
-//       /* calcolo SoC (nella fase di work) solo se la nuova tensione si differenzia dalla vecchia non oltre una certa quantità */
-//       if (vf_old - vf > 0.1f) {
-//         return (uint16_t)old_soc;
-//       }
-//     } else {
-//       return (uint16_t)old_soc;
-//     }
-//   }
-//   /* Correggi tensione per temperatura */
-//   float v = adjust_voltage_for_temp(vf, tempC);
-
-//   if (v >= soc_lut[0].voltage) {
-//     return (uint16_t)(soc_lut[0].soc);
-//   }
-
-//   if (v <= soc_lut[LUT_SIZE - 1].voltage) {
-//     return (uint16_t)(soc_lut[LUT_SIZE - 1].soc);
-//   }
-
-//   for (int i = 0; i < LUT_SIZE - 1; i++) {
-//     if (v <= soc_lut[i].voltage && v > soc_lut[i + 1].voltage) {
-//       float v1 = soc_lut[i].voltage;
-//       float v2 = soc_lut[i + 1].voltage;
-//       float s1 = soc_lut[i].soc;
-//       float s2 = soc_lut[i + 1].soc;
-
-//       /* interpolazione lineare */
-//       float t = ((float)(v - v2)) / ((float)(v1 - v2));
-//       float soc = s2 + t * (s1 - s2);
-//       if (soc >= old_soc + 5.0f || soc <= old_soc - 5.0f) {
-//         old_soc = soc;
-//       } else {
-//         soc = old_soc;
-//       }
-//       return (uint16_t)(soc);
-//     }
-//   }
-//   /* fallback */
-//   return 0U;
-// }
 /* ----------------------------------------------------------
    Correzione tensione in funzione della temperatura.
    Le Ni-MH abbassano la tensione a freddo ~1.5mV/°C
@@ -350,14 +299,30 @@ soc_estimate(uint16_t soc_cc, uint16_t soc_v, uint16_t i_mm, bool isCharging, bo
   return (uint16_t)(soc_cc_f);
 }
 
-uint16_t time_charge_estimate(float mAh, float mAh_max, uint16_t ibat, uint16_t last_minutes, bool first_cycle) {
+uint16_t
+time_charge_estimate(float mAh, float mAh_max, uint16_t ibat, bool last_minutes, bool first_cycle, int16_t temp) {
   /* se non ho ancora fatto il primo ciclo di ricarica, per il tempo rimanenete mi affido al SoC TODO !!!!!!*/
-  float ibat_f_A = ibat / 1000.0f; // mA → A
-  float Q_remaining = mAh_max - mAh;
-  float time_h = Q_remaining / ibat_f_A;
-  if(last_minutes != 0xFFFF){
+  static uint16_t minutes = 1000;
+  float tempC = temp / 100.0f;
+  float Qmax_mAh = (float)mAh_max * capacity_temp_corr(tempC);
+  float Q_remaining = Qmax_mAh - mAh;
+  float time_h = Q_remaining / (float)ibat;
+  if (last_minutes) {
     /* se sono in CV impongo i minuti per la fine carica e inoltro quelli */
-    return last_minutes;
+    return 5U;
   }
-  return (uint16_t)(time_h * 60.0f + 5.0f); // minuti
+
+  uint16_t estimated = (uint16_t)(time_h * 60.0f + 5.0f);
+
+  /* minimo storico */
+  minutes = (estimated < minutes) ? estimated : minutes;
+
+  /* arrotondamento a step di 5 minuti */
+  minutes = ((minutes + 2) / 5) * 5;
+  /* così segna 5 quando arriva in CV*/
+  if(minutes < 10) {
+    minutes = 10;
+  }
+  //minutes = (uint16_t)(time_h * 60.0f + 5.0f) < minutes ? (uint16_t)(time_h * 60.0f + 5.0f) : minutes;
+  return minutes; // minuti
 }

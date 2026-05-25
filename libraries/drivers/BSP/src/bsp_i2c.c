@@ -27,7 +27,7 @@
 * Includes
 ******************************************************************************/
 #include "bsp_i2c.h"
-#include "fsl_common.h"
+//#include "fsl_common.h"
 #include "fsl_lpi2c.h"
 #include "fsl_port.h"
 

@@ -144,7 +144,10 @@ if(USE_MCXA142)
   target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/ctimer/fsl_ctimer.c)     
 
   include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/inputmux)
-  target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/inputmux/fsl_inputmux.c)       
+  target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/inputmux/fsl_inputmux.c)      
+  
+    include_directories(${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/wwdt)
+  target_sources(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/libraries/drivers/mcuxsdk_core/drivers/wwdt/fsl_wwdt.c)       
 endif()
 
 # Include il layer BSP

@@ -37,6 +37,7 @@
 #include "project_settings.h"
 #include "qpc.h"
 #include "soc_NiMh.h"
+
 /*****************************************************************************
 * Module Preprocessor Constants
 ******************************************************************************/
@@ -103,7 +104,7 @@ bsp_adc_isr_handler(void) {
   lpadc_conv_result_t adc_result;
   uint32_t voltage_mV;
   uint32_t current_mA;
-  uint32_t temp;
+  int16_t temp;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
@@ -113,7 +114,7 @@ bsp_adc_isr_handler(void) {
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 
   // 16-bit conversion result
-  temp = (uint32_t)bsp_ntc_battery_get_temperature(adc_result.convValue, 65535) * 100U;
+  temp = (int16_t)bsp_ntc_battery_get_temperature(adc_result.convValue, 65535) * 100U;
 
   if (LPADC_GetConvResult(LPADC_BASE, &adc_result)) {}
 

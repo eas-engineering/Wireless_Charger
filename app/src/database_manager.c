@@ -50,8 +50,9 @@ typedef struct {
   uint16_t ibat_mm;
   uint16_t vbat_mm;
   uint16_t mAh;
-  uint16_t mAh_cycles;
-  uint16_t n_cycles;
+  uint16_t mAh_n_cycles_charge;
+  uint16_t mAh_tot;
+  uint16_t number_of_charges;
   uint16_t zero_current_value;
   uint16_t first_cycle;
   uint32_t cnt_debug;
@@ -164,7 +165,8 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
 
       //debug -> pulisco la eeprom ogni volta DA TOGLIERE !!!!!!!!!!!!!!!
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_PARAM, (uint16_t)0x0000);
-      // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_CYCLES_PARAM, (uint16_t)0x0000);
+      // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_N_CYCLES_CHARGE_PARAM, (uint16_t)0x0000);
+      // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_TOT_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)N_CYCLES_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)FIRST_CYCLE_PARAM, (uint16_t)0x0001);
       // nv_param_set(&battery_nv_ctx, (uint16_t)ZERO_CURR_VAL_PARAM, (uint16_t)0x0000);
@@ -184,8 +186,9 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
         evt->params.battery.kv.value[i] = nv_param_get(&battery_nv_ctx, (uint16_t)i);
       }
       me->mAh = nv_param_get(&battery_nv_ctx, (uint16_t)MAH_PARAM);
-      me->mAh_cycles = nv_param_get(&battery_nv_ctx, (uint16_t)MAH_CYCLES_PARAM);
-      me->n_cycles = nv_param_get(&battery_nv_ctx, (uint16_t)N_CYCLES_PARAM);
+      me->mAh_n_cycles_charge = nv_param_get(&battery_nv_ctx, (uint16_t)MAH_N_CYCLES_CHARGE_PARAM);
+      me->mAh_tot = nv_param_get(&battery_nv_ctx, (uint16_t)MAH_TOT_PARAM);
+      me->number_of_charges = nv_param_get(&battery_nv_ctx, (uint16_t)N_CYCLES_PARAM);
       me->first_cycle = nv_param_get(&battery_nv_ctx, (uint16_t)FIRST_CYCLE_PARAM);
       me->zero_current_value = nv_param_get(&battery_nv_ctx, (uint16_t)ZERO_CURR_VAL_PARAM);
       QACTIVE_PUBLISH(&evt->super, 0U);
@@ -212,8 +215,9 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
       // Pubblico un evento di cambiamento dei parametri (ENV_DATABASE_CHANGED_SIG) con i nuovi valori
       evt->super.sig = ENV_DATABASE_CHANGED_SIG;
       QACTIVE_PUBLISH(&evt->super, 0U);
-      /* ogni volta che viene fatto un salvataggio in eeprom faccio ripartire il timer dei salvataggi da zero */
-      QTimeEvt_rearm(&me->timeEvt, SAVE_DATA_TIME);
+      /* ogni volta che viene fatto un salvataggio in eeprom faccio ripartire il timer dei salvataggi da zero (potrebbe essere che avviene un salvataggio forzato da fuori ) */
+      QTimeEvt_disarm(&me->timeEvt);
+      QTimeEvt_armX(&me->timeEvt, SAVE_DATA_TIME, 0);
       status = Q_HANDLED();
       break;
     }
@@ -223,7 +227,7 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
       me->ibat_mm = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->ibat_mm);
       me->vbat_mm = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->vbat_mm);
       me->mAh = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->mAh);
-      me->mAh_cycles = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->mAh_cycles);
+      me->mAh_n_cycles_charge = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->mAh_n_cycles_charge);
       me->first_cycle = (uint16_t)(Q_EVT_CAST(DatabaseEvt)->first_cycle);
       status = Q_HANDLED();
       break;
@@ -251,8 +255,8 @@ databaseInfo_process_data(DatabaseManager_t* me, uint32_t delay) {
   evt->params.battery.kv.value[MAH_PARAM] = me->mAh;
   
   if (me->isCharging) {
-    evt->params.battery.kv.operation[MAH_CYCLES_PARAM] = DB_WRITING;
-    evt->params.battery.kv.value[MAH_CYCLES_PARAM] = me->mAh_cycles;
+    evt->params.battery.kv.operation[MAH_N_CYCLES_CHARGE_PARAM] = DB_WRITING;
+    evt->params.battery.kv.value[MAH_N_CYCLES_CHARGE_PARAM] = me->mAh_n_cycles_charge;
   }
 
   QACTIVE_POST(AO_DatabaseManager, (QEvt*)evt, me);

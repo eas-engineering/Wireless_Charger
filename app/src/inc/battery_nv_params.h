@@ -47,9 +47,9 @@ extern "C" {
 
 /* Enum IDs for eOTI */
 typedef enum {
-  SOC_PARAM = 0,
-  MAH_PARAM,
-  MAH_CYCLES_PARAM,
+  MAH_PARAM = 0,
+  MAH_N_CYCLES_CHARGE_PARAM,
+  MAH_TOT_PARAM,
   N_CYCLES_PARAM,
   ZERO_CURR_VAL_PARAM,
   FIRST_CYCLE_PARAM,

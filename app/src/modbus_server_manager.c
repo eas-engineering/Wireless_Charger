@@ -27,26 +27,29 @@ Q_DEFINE_THIS_FILE
 * Module Preprocessor Constants
 ******************************************************************************/
 
-#define FW_NAME_MAX_LEN            (IR_FIRMWARE_REV_BASE_ADDR - IR_FIRMWARE_NAME_BASE_ADDR)
-#define CENTER_NAME_MAX_LEN        (IR_EVENT_MANT_TYPE_ADDR - IR_EVENT_MANT_CENTER_NAME_ADDR)
-#define NOTE_MAX_LEN               (IR_DUMMY_ADDR - IR_EVENT_MANT_NOTE_ADDR)
+#define FW_NAME_MAX_LEN             (IR_FIRMWARE_REV_BASE_ADDR - IR_FIRMWARE_NAME_BASE_ADDR)
+#define CENTER_NAME_MAX_LEN         (IR_EVENT_MANT_TYPE_ADDR - IR_EVENT_MANT_CENTER_NAME_ADDR)
+#define NOTE_MAX_LEN                (IR_DUMMY_ADDR - IR_EVENT_MANT_NOTE_ADDR)
 
-#define HR_BASE_ADDR               1000U
-#define HR_VBAT_ADDR               (HR_BASE_ADDR + 0U)
-#define HR_IBAT_ADDR               (HR_BASE_ADDR + 1U)
-#define HR_TBAT_ADDR               (HR_BASE_ADDR + 2U)
-#define HR_SOC_ADDR                (HR_BASE_ADDR + 3U)
-#define HR_END_OF_CHARGE_TIME_ADDR (HR_BASE_ADDR + 4U)
-#define HR_NUMBER_OF_CHARGES_ADDR  (HR_BASE_ADDR + 5U)
-#define HR_DUMMY_ADDR              (HR_BASE_ADDR + 6U)
+#define HR_BASE_ADDR                1000U
+#define HR_VBAT_ADDR                (HR_BASE_ADDR + 0U)
+#define HR_IBAT_ADDR                (HR_BASE_ADDR + 1U)
+#define HR_TBAT_ADDR                (HR_BASE_ADDR + 2U)
+#define HR_SOC_ADDR                 (HR_BASE_ADDR + 3U)
+#define HR_END_OF_CHARGE_TIME_ADDR  (HR_BASE_ADDR + 4U)
+#define HR_NUMBER_OF_CHARGES_ADDR   (HR_BASE_ADDR + 5U)
+#define HR_ALLARM_ADDR              (HR_BASE_ADDR + 6U)
+#define HR_MAH_N_CYCLES_CHARGE_ADDR (HR_BASE_ADDR + 7U)
+#define HR_MAH_TOT_ADDR             (HR_BASE_ADDR + 8U)
+#define HR_DUMMY_ADDR               (HR_BASE_ADDR + 9U)
 
-#define HR_REG_OFF(x)              ((x) - HR_BASE_ADDR)
-#define HR_GROUP_LEN               (HR_DUMMY_ADDR - HR_BASE_ADDR + 1U)
+#define HR_REG_OFF(x)               ((x) - HR_BASE_ADDR)
+#define HR_GROUP_LEN                (HR_DUMMY_ADDR - HR_BASE_ADDR + 1U)
 
-#define PASSWORD_TIMEOUT_MS        60000U
+#define PASSWORD_TIMEOUT_MS         60000U
 
 /* Modbus register limits */
-#define MAX_RW_REGS_PER_REQUEST    17U
+#define MAX_RW_REGS_PER_REQUEST     17U
 
 /*****************************************************************************
 * Module Preprocessor Macros
@@ -234,12 +237,16 @@ mb_server_active_state(ModbusServerManager_t* const me, QEvt const* const e) {
       me->holding_register_buff[HR_REG_OFF(HR_VBAT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->vbat);
       me->holding_register_buff[HR_REG_OFF(HR_IBAT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->ibat);
       me->holding_register_buff[HR_REG_OFF(HR_TBAT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->tbat);
-      me->holding_register_buff[HR_REG_OFF(HR_SOC_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->soc);
+      /* per ora il soc è dato solo dalla misura di corrente */
+      me->holding_register_buff[HR_REG_OFF(HR_SOC_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->soc_cc);
       me->holding_register_buff[HR_REG_OFF(HR_END_OF_CHARGE_TIME_ADDR)] =
-        (uint16_t)0U;//(uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->end_of_charge_time);
+        (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->end_of_charge_time);
       me->holding_register_buff[HR_REG_OFF(HR_NUMBER_OF_CHARGES_ADDR)] =
         (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->number_of_charges);
-
+      me->holding_register_buff[HR_REG_OFF(HR_ALLARM_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->allarm);
+      me->holding_register_buff[HR_REG_OFF(HR_MAH_N_CYCLES_CHARGE_ADDR)] =
+        (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->mAh_n_cycles_charge);
+      me->holding_register_buff[HR_REG_OFF(HR_MAH_TOT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->mAh_tot);
       status = Q_HANDLED();
       break;
     }

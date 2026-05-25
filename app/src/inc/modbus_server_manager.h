@@ -61,13 +61,19 @@ enum {
 * Module Variable Definitions
 ******************************************************************************/
 typedef struct {
-    QEvt super;      
-    uint32_t vbat;   // mV
-    uint32_t ibat;   // mA
+    QEvt super;
+    /* V*100 -> 17.00V = 1700 */      
+    uint32_t vbat;
+    /* mA */   
+    uint32_t ibat;   
     uint32_t tbat;   
-    uint32_t soc;
-    uint32_t end_of_charge_time; // in minutes
+    uint32_t soc_cc;
+    /* in minutes */
+    uint32_t end_of_charge_time;
     uint32_t number_of_charges;
+    uint32_t allarm;
+    uint32_t mAh_n_cycles_charge;
+    uint32_t mAh_tot;
 } ModBusInfoEvt;
 
 extern QActive* const AO_ModbusServerManager; // opaque pointer

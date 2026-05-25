@@ -41,13 +41,13 @@
  *  eOTI descriptors in FLASH/ROM (compile-time)
  * ========================================================= */
 static const nv_param_desc_t s_battery_desc[BATTERY_PARAM_COUNT] = {
-  {0U, 0U, 100U},     /* SOC  */
+  /* {defv, minv, maxv} */
   {0U, 0U, 2500U},    /* MAH_ON_CHARGE */
-  {0U, 0U, 2500U},    /* MAH_REMAINING */
-  {0U, 0U, 2500U},    /* MAH_CYCLES */
-  {0U, 0U, 10000U},   /* N_CYCLES */
+  {0U, 0U, 2500U},    /* MAH_N_CYCLES_CHARGE */
+  {1630U, 1427U, 2000U}, /* MAH_TOT */
+  {0U, 0U, 65535U},   /* N_CYCLES */
   {1650U, 1U, 3300U}, /* ZERO_CURR_VALUE */
-  {1U, 0U, 1U},       /* FIRST_CYCLE */
+  {1U, 0U, 1U}        /* FIRST_CYCLE */
 };
 
 /* =========================================================

@@ -46,11 +46,11 @@ extern "C" {
 
 typedef struct {
   QEvt super;
-  bool isCharging;
-  uint16_t vbat_mm;
   uint16_t ibat_mm;
+  uint16_t vbat_mm;
+  bool isCharging;
   float mAh;
-  float mAh_cycles;
+  float mAh_n_cycles_charge;
   bool first_cycle;
 } DatabaseEvt;
 
