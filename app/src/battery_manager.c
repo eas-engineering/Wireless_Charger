@@ -40,12 +40,12 @@
 #include "bsp_pwm.h"
 #include "bsp_stwlc_driver.h"
 #include "database_manager.h"
+#include "fsl_wwdt.h"
 #include "global_signals.h"
 #include "modbus_server_manager.h"
 #include "project_settings.h"
 #include "qpc.h"
 #include "soc_NiMh.h"
-#include "fsl_wwdt.h"
 
 #if defined(USE_QPC)
 Q_DEFINE_THIS_FILE // define the name of this file for assertions
@@ -230,8 +230,9 @@ static QState charger_cc_manager(BatteryManager_t* const me, batteryInfo_t battI
 static QState charger_cv_manager(BatteryManager_t* const me, batteryInfo_t battInfo, uint32_t max_charge_curr_mA);
 static uint32_t current_to_pwm(uint32_t curr_mA);
 static void batteryInfo_process_data(BatteryManager_t* me, AdcInfoEvt const* evt);
-;
 static float filter_ibat_mA(float ibat_raw_mA, BatteryManager_t* const me);
+
+static void initWWDT(void);
 /*****************************************************************************
 * Module Variable Definitions
 ******************************************************************************/
@@ -286,18 +287,6 @@ battery_manager_initialize_state(BatteryManager_t* const me, QEvt const* const e
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
-      // wwdt_config_t config;
-
-      // /* 1. Ottiene la configurazione di default del Watchdog */
-      // WWDT_GetDefaultConfig(&config);
-
-      // /* 2. Personalizza i parametri (opzionale) */
-      // // config.timeoutValue = 0x00FFFFFF; // Imposta il valore di timeout personalizzato
-      // config.enableWwdt = true;            // Forza l'abilitazione del WDOG dopo l'Init
-
-      // /* 3. Inizializza il modulo WWDT (utilizzando l'istanza corretta, es. WWDT) */
-      // WWDT_Init(WWDT, &config);
-
       QActive_subscribe(&me->super, BUTTON_PRESSED_SIG);
       QActive_subscribe(&me->super, ADC_BATTERY_INFO_SAMPLE_SIG);
       QActive_subscribe(&me->super, ENV_DATABASE_CHANGED_SIG);
@@ -395,6 +384,9 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
     }
 
     case ADC_BATTERY_INFO_SAMPLE_SIG: {
+      /* refresh watchdog */
+      WWDT_Refresh(WWDT0);
+
       batteryInfo_process_data(me, Q_EVT_CAST(AdcInfoEvt));
       static QEvt const evt = QEVT_INITIALIZER(ADC_DATA_READY_SIG);
       QACTIVE_POST(AO_BatteryManager, &evt, 0U);
@@ -834,6 +826,8 @@ battery_manager_on_state(BatteryManager_t* const me, QEvt const* const e) {
   switch (e->sig) {
 
     case Q_ENTRY_SIG: {
+      /* abilito watchdog */
+      initWWDT();
       me->isCharging = false;
       bsp_digital_output_set(IO_V_AUX_EN, IO_OFF);
       bsp_digital_output_set(IO_BAT_SW_EN, IO_ON);
@@ -1021,13 +1015,12 @@ battery_manager_allarm_state(BatteryManager_t* const me, QEvt const* const e) {
         QACTIVE_POST(AO_DatabaseManager, (QEvt*)evt, me);
       }
 
-      QTimeEvt_armX(&me->timerEvt, SECOND_N_TICKS * 5, 0);
+      QTimeEvt_armX(&me->timerEvt, 5*SECOND_N_TICKS, 0);
       status = Q_HANDLED();
       break;
     }
 
     case BUTTON_PRESSED_SIG: {
-      if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_CHARGE_BTN) {
         if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
           if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
             /* turn-off board */
@@ -1036,13 +1029,15 @@ battery_manager_allarm_state(BatteryManager_t* const me, QEvt const* const e) {
             break;
           }
         }
-      }
       status = Q_HANDLED();
       break;
     }
     case TIMEOUT_SIG: {
-      /* turn-off board */
-      //bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+      WWDT_Refresh(WWDT0);
+      QTimeEvt_armX(&me->timerEvt, 5*SECOND_N_TICKS, 0);
+      if(me->allarm_info == BATTERY_VERY_LOW){
+        bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+      }
       status = Q_HANDLED();
       break;
     }
@@ -1377,4 +1372,28 @@ batteryInfo_process_data(BatteryManager_t* me, AdcInfoEvt const* evt) {
   } else {
     me->end_charge_time = 0xFFFF;
   }
+}
+
+static void
+initWWDT() {
+  wwdt_config_t config;
+  uint32_t wdtFreq;
+  /* The WDT divides the input frequency into it by 4 */
+  wdtFreq = CLOCK_GetWwdtClkFreq() / 4;
+
+  WWDT_GetDefaultConfig(&config);
+
+  /*
+      * Set watchdog feed time constant to approximately 10s
+      * Set watchdog warning time to 512 ticks after feed time constant
+      */
+  config.timeoutValue = wdtFreq * 10;
+  config.warningValue = 512;
+  //config.windowValue = wdtFreq * 2;
+  config.windowValue = config.timeoutValue;
+  /* Configure WWDT to reset on timeout */
+  config.enableWatchdogReset = true;
+  /* Setup watchdog clock frequency(Hz). */
+  config.clockFreq_Hz = CLOCK_GetWwdtClkFreq();
+  WWDT_Init(WWDT0, &config);
 }
