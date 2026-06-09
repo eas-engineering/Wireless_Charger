@@ -616,7 +616,7 @@ battery_manager_on_cc_charge_state(BatteryManager_t* const me, QEvt const* const
     }
 
     case ADC_DATA_READY_SIG: {
-      status = charger_cc_manager(me, me->battInfo, 500U);
+      status = charger_cc_manager(me, me->battInfo, 450U);
       break;
     }
 
@@ -1015,27 +1015,27 @@ battery_manager_allarm_state(BatteryManager_t* const me, QEvt const* const e) {
         QACTIVE_POST(AO_DatabaseManager, (QEvt*)evt, me);
       }
 
-      QTimeEvt_armX(&me->timerEvt, 5*SECOND_N_TICKS, 0);
+      QTimeEvt_armX(&me->timerEvt, 5 * SECOND_N_TICKS, 0);
       status = Q_HANDLED();
       break;
     }
 
     case BUTTON_PRESSED_SIG: {
-        if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
-          if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
-            /* turn-off board */
-            bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
-            status = Q_HANDLED();
-            break;
-          }
+      if (Q_EVT_CAST(keypad_event_t)->btn == BSP_KEYPAD_ON_OFF_BTN) {
+        if (Q_EVT_CAST(keypad_event_t)->event == BSP_BUTTON_ONPRESSED_EVENT) {
+          /* turn-off board */
+          bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
+          status = Q_HANDLED();
+          break;
         }
+      }
       status = Q_HANDLED();
       break;
     }
     case TIMEOUT_SIG: {
       WWDT_Refresh(WWDT0);
-      QTimeEvt_armX(&me->timerEvt, 5*SECOND_N_TICKS, 0);
-      if(me->allarm_info == BATTERY_VERY_LOW){
+      QTimeEvt_armX(&me->timerEvt, 5 * SECOND_N_TICKS, 0);
+      if (me->allarm_info == BATTERY_VERY_LOW) {
         bsp_digital_output_set(IO_BAT_SW_EN, IO_OFF);
       }
       status = Q_HANDLED();
