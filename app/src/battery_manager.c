@@ -412,7 +412,7 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
       QACTIVE_POST(AO_DatabaseManager, &evtDatabase->super, 0U);
 
       /* se ho finito la carica, ma il dispositivo rimane collegato al caricatore e si scarica, faccio ripartire la carica */
-      if (me->endCharge && me->battInfo.mAh < 1590U) {
+      if (me->endCharge && (me->battInfo.mAh < (me->battInfo.mAh_tot - 40U))) {
         me->endCharge = false;
         me->isCharging = true;
         status = Q_TRAN(&battery_manager_soft_start_state);

@@ -115,7 +115,7 @@ bsp_drive_serial_isr_rx_handler(void) {
   bsp_drive_serial_t* me = &Serial_inst;
   uint8_t data;
 
-  /* If new data arrived. */
+  /* If new data request arrived. */
   if ((kLPUART_RxDataRegFullFlag & LPUART_GetStatusFlags(LPUART)) != 0) {
     data = LPUART_ReadByte(LPUART);
     me->fifo[me->head] = data;
@@ -133,12 +133,12 @@ bsp_drive_serial_isr_rx_handler(void) {
   if ((kLPUART_TxDataRegEmptyFlag & LPUART_GetStatusFlags(LPUART)) != 0) {
 
     DriveSerialEvt_t* evt = (DriveSerialEvt_t*)(me->txEvtRef);
+    me->tx_index++;
     if (me->tx_index >= evt->len) {
       LPUART_DisableInterrupts(LPUART, kLPUART_TxDataRegEmptyInterruptEnable);
       static QEvt const evt = QEVT_INITIALIZER(SERIAL_TX_CMPL_SIG);
       QACTIVE_POST(me->container, &evt, me);
     } else {
-      ++me->tx_index;
       LPUART_WriteByte(LPUART, evt->pui8_data[me->tx_index]);
     }
 

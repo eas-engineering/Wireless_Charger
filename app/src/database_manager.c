@@ -166,7 +166,7 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
       //debug -> pulisco la eeprom ogni volta DA TOGLIERE !!!!!!!!!!!!!!!
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_N_CYCLES_CHARGE_PARAM, (uint16_t)0x0000);
-      // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_TOT_PARAM, (uint16_t)0x0000);
+      // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_TOT_PARAM, (uint16_t)0U);
       // nv_param_set(&battery_nv_ctx, (uint16_t)N_CYCLES_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)FIRST_CYCLE_PARAM, (uint16_t)0x0001);
       // nv_param_set(&battery_nv_ctx, (uint16_t)ZERO_CURR_VAL_PARAM, (uint16_t)0x0000);
