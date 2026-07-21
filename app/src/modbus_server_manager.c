@@ -41,7 +41,8 @@ Q_DEFINE_THIS_FILE
 #define HR_ALLARM_ADDR              (HR_BASE_ADDR + 6U)
 #define HR_MAH_N_CYCLES_CHARGE_ADDR (HR_BASE_ADDR + 7U)
 #define HR_MAH_TOT_ADDR             (HR_BASE_ADDR + 8U)
-#define HR_DUMMY_ADDR               (HR_BASE_ADDR + 9U)
+#define HR_IBAT_RAW_ADDR            (HR_BASE_ADDR + 9U)
+#define HR_DUMMY_ADDR               (HR_BASE_ADDR + 10U)
 
 #define HR_REG_OFF(x)               ((x) - HR_BASE_ADDR)
 #define HR_GROUP_LEN                (HR_DUMMY_ADDR - HR_BASE_ADDR + 1U)
@@ -247,6 +248,7 @@ mb_server_active_state(ModbusServerManager_t* const me, QEvt const* const e) {
       me->holding_register_buff[HR_REG_OFF(HR_MAH_N_CYCLES_CHARGE_ADDR)] =
         (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->mAh_n_cycles_charge);
       me->holding_register_buff[HR_REG_OFF(HR_MAH_TOT_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->mAh_tot);
+      me->holding_register_buff[HR_REG_OFF(HR_IBAT_RAW_ADDR)] = (uint16_t)(Q_EVT_CAST(ModBusInfoEvt)->ibat_raw);
       status = Q_HANDLED();
       break;
     }

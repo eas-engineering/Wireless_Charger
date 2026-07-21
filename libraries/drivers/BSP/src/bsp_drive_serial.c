@@ -130,10 +130,14 @@ bsp_drive_serial_isr_rx_handler(void) {
   }
 
   /* IDLE line detected */
-  if ((kLPUART_TxDataRegEmptyFlag & LPUART_GetStatusFlags(LPUART)) != 0) {
+  if (((kLPUART_TransmissionCompleteFlag & LPUART_GetStatusFlags(LPUART)) != 0)
+      && (kLPUART_TxDataRegEmptyInterruptEnable & LPUART_GetEnabledInterrupts(LPUART)) != 0) {
+
+    LPUART_ClearStatusFlags(LPUART, kLPUART_TransmissionCompleteFlag);
 
     DriveSerialEvt_t* evt = (DriveSerialEvt_t*)(me->txEvtRef);
     me->tx_index++;
+
     if (me->tx_index >= evt->len) {
       LPUART_DisableInterrupts(LPUART, kLPUART_TxDataRegEmptyInterruptEnable);
       static QEvt const evt = QEVT_INITIALIZER(SERIAL_TX_CMPL_SIG);
@@ -141,8 +145,6 @@ bsp_drive_serial_isr_rx_handler(void) {
     } else {
       LPUART_WriteByte(LPUART, evt->pui8_data[me->tx_index]);
     }
-
-    LPUART_ClearStatusFlags(LPUART, kLPUART_TxDataRegEmptyFlag);
   }
 
   QK_ISR_EXIT();

@@ -65,7 +65,8 @@ typedef struct {
     /* V*100 -> 17.00V = 1700 */      
     uint32_t vbat;
     /* mA */   
-    uint32_t ibat;   
+    uint32_t ibat;
+    uint32_t ibat_raw;   
     uint32_t tbat;   
     uint32_t soc_cc;
     /* in minutes */

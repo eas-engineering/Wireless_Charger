@@ -401,6 +401,7 @@ battery_manager_active_state(BatteryManager_t* const me, QEvt const* const e) {
       evtModBus->allarm = me->allarm_info;
       evtModBus->mAh_n_cycles_charge = me->battInfo.mAh_n_cycles_charge;
       evtModBus->mAh_tot = me->battInfo.mAh_tot;
+      evtModBus->ibat_raw = me->battInfo.ibat_raw;
       QACTIVE_POST(AO_ModbusServerManager, &evtModBus->super, 0U);
 
       DatabaseEvt* evtDatabase = Q_NEW(DatabaseEvt, DATABASE_INFO_UPDATE_SIG);

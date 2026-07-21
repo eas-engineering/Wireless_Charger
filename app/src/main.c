@@ -66,8 +66,8 @@ Q_DEFINE_THIS_FILE // define the name of this file for assertions
 
 #if defined(USE_QPC)
   static QF_MPOOL_EL(DriveSerialEvt_t) smlSerialPoolSto[10];
-  //static QF_MPOOL_EL(BspI2CEvt_t) smlI2CPoolSto[10]; 
-static QSubscrList subscrSto[MAX_PUB_SIG];
+  static QF_MPOOL_EL(ModBusInfoEvt) medPoolSto[10];
+  static QSubscrList subscrSto[MAX_PUB_SIG];
 #endif
 
 /*****************************************************************************
@@ -104,7 +104,7 @@ main(void) {
 
   // initialize event pools
   QF_poolInit(smlSerialPoolSto, sizeof(smlSerialPoolSto), sizeof(smlSerialPoolSto[0]));
-  //QF_poolInit(smlI2CPoolSto, sizeof(smlI2CPoolSto), sizeof(smlI2CPoolSto[0]));
+  QF_poolInit(medPoolSto, sizeof(medPoolSto), sizeof(medPoolSto[0]));
 
   // initialize publish-subscribe
   QActive_psInit(subscrSto, Q_DIM(subscrSto));
