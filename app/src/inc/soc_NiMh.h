@@ -52,7 +52,7 @@ extern "C" {
 ******************************************************************************/
 uint16_t soc_from_voltage_nimh(uint16_t v_mm, uint16_t tempC, uint16_t i_mm, bool isCharging);
 
-uint16_t soc_coulomb(float Q_mAh, uint16_t Q_mAh_max,int16_t temp, bool first_cycle, bool isCharging);
+uint16_t soc_coulomb(float Q_mAh, uint16_t Q_mAh_max,int16_t temp, bool first_cycle);
 
 uint16_t soc_estimate(uint16_t soc_cc, uint16_t soc_v, uint16_t i_mm, bool isCharging, bool first_cycle);
 

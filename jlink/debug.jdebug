@@ -19,15 +19,15 @@ Ozone Version : V3.30b
 **********************************************************************
 */
 void OnProjectLoad (void) {
+  Project.SetDevice ("MCXA142");
+  Project.SetHostIF ("USB", "609300559");
+  Project.SetTargetIF ("SWD");
+  Project.SetTIFSpeed ("15 MHz");
   //
   // Dialog-generated settings. NEEDED CHANGE PROJECT NAME!
-  //  
+  //
   Project.AddPathSubstitute ("/workspaces/Wireless_Charger", "..\..\Wireless_Charger");
-  Project.SetDevice ("MCXA142");
-  Project.SetHostIF ("USB", "");
-  Project.SetTargetIF ("SWD");
-  Project.SetTIFSpeed ("4 MHz");
-  Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M33.svd");  
+  Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M33.svd");
   //
   // User settings NEEDED CHANGE PROJECT NAME!
   //

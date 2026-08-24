@@ -163,7 +163,7 @@ database_active_state(DatabaseManager_t* const me, QEvt const* const e) {
       static const QEvt evt = QEVT_INITIALIZER(INITIALIZE_SIG);
       QACTIVE_POST(AO_DatabaseManager, (QEvt*)&evt, me);
 
-      //debug -> pulisco la eeprom ogni volta DA TOGLIERE !!!!!!!!!!!!!!!
+      //debug -> pulisco la eeprom ( DA TOGLIERE !!!!!!!!!!!!!!! )
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_N_CYCLES_CHARGE_PARAM, (uint16_t)0x0000);
       // nv_param_set(&battery_nv_ctx, (uint16_t)MAH_TOT_PARAM, (uint16_t)0U);

@@ -99,9 +99,10 @@ capacity_temp_corr(float tempC) {
   }
   return 1.0f;
 }
+
 uint16_t
-soc_coulomb(float Q_mAh, uint16_t Q_mAh_max, int16_t temp, bool first_cycle, bool isCharging) {
-  /* Aggiorna capacità max in funzione temperatura */
+soc_coulomb(float Q_mAh, uint16_t Q_mAh_max, int16_t temp, bool first_cycle) {
+
   if (first_cycle) {
     return 0;
   }
@@ -118,9 +119,9 @@ soc_coulomb(float Q_mAh, uint16_t Q_mAh_max, int16_t temp, bool first_cycle, boo
   soc = (Q_mAh / Qmax_mAh) * 100.0f;
   soc = (uint16_t)((soc + 2.5f) / 5.0f) * 5;
   /* SoC */
-  if(soc > 95 && isCharging) {
-    soc = 95;
-  }
+  // if(soc > 95 && isCharging) {
+  //   soc = 95;
+  // }
   return (uint8_t)(soc);
 }
 
@@ -301,12 +302,19 @@ soc_estimate(uint16_t soc_cc, uint16_t soc_v, uint16_t i_mm, bool isCharging, bo
 
 uint16_t
 time_charge_estimate(float mAh, float mAh_max, uint16_t ibat, bool last_minutes, bool first_cycle, int16_t temp) {
+
+  if (first_cycle) {
+    return 0;
+  }
   /* se non ho ancora fatto il primo ciclo di ricarica, per il tempo rimanenete mi affido al SoC TODO !!!!!!*/
   static uint16_t minutes = 1000;
   float tempC = temp / 100.0f;
   float Qmax_mAh = (float)mAh_max * capacity_temp_corr(tempC);
   float Q_remaining = Qmax_mAh - mAh;
-  float time_h = Q_remaining / (float)ibat;
+  float time_h;
+
+  time_h = Q_remaining / (float)ibat;
+
   if (last_minutes) {
     /* se sono in CV impongo i minuti per la fine carica e inoltro quelli */
     return 5U;
@@ -320,7 +328,7 @@ time_charge_estimate(float mAh, float mAh_max, uint16_t ibat, bool last_minutes,
   /* arrotondamento a step di 5 minuti */
   minutes = ((minutes + 2) / 5) * 5;
   /* così segna 5 quando arriva in CV*/
-  if(minutes < 10) {
+  if (minutes < 10) {
     minutes = 10;
   }
   //minutes = (uint16_t)(time_h * 60.0f + 5.0f) < minutes ? (uint16_t)(time_h * 60.0f + 5.0f) : minutes;
